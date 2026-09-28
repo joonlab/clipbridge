@@ -21,6 +21,8 @@
   .mac-notification .n-title { font-size: 19px; }
   .mac-notification .n-time { font-size: 15px; }
   .mac-notification .n-body { font-size: 19px; line-height: 27px; }
+  /* 배경 G 의 맥 화면 아래 가장자리 초록 경계가 들쭉날쭉해 합성 후 검은 톱니가 보인다 → 화면 맨 아래를 베젤처럼 어둡게 */
+  .desk::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #0b0b0c; z-index: 9; }
 </style></head><body>
 <div class="desk">
   <div class="mac-menubar">
@@ -31,15 +33,15 @@
     <div class="mac-notification">
       <img data-app="clipbridge" alt="">
       <div>
-        <div class="n-top"><span class="n-title">메신저</span><span class="n-time">지금</span></div>
-        <div class="n-body"><b>민지</b> · 내일 회의 10시 맞지?</div>
+        <div class="n-top"><span class="n-title">📱 메신저</span><span class="n-time">지금</span></div>
+        <div class="n-body"><b>민지</b><br>내일 회의 10시 맞지?</div>
       </div>
     </div>
     <div class="mac-notification">
       <img data-app="clipbridge" alt="">
       <div>
-        <div class="n-top"><span class="n-title">택배</span><span class="n-time">2분 전</span></div>
-        <div class="n-body"><b>배송 출발</b></div>
+        <div class="n-top"><span class="n-title">📱 택배</span><span class="n-time">2분 전</span></div>
+        <div class="n-body">배송 출발</div>
       </div>
     </div>
   </div>
