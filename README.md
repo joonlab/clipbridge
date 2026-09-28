@@ -39,7 +39,7 @@
 | 맥 → 폰 링크 | `link2phone [url]` | 「다른 앱 위에 표시」를 허용하면 바로 열리고, 아니면 알림으로 옵니다 |
 | 폰 알림 → 맥 | 폰에서 알림 접근을 허용하면 맥 알림센터에 뜹니다. `phone-notify apps / deny / allow / only` 로 앱별로 거릅니다 | 알림 본문은 맥 로그에 남기지 않습니다 |
 | 문자 읽기 | `phone-sms` · `phone-sms read <번호>` · `phone-sms search <키워드>` | 읽기 전용이 기본. `send` 는 매번 확인을 묻고, 실제 발송은 검증하지 않았습니다 |
-| 폰 화면 미러링 | `phone` · `phone off`(폰 화면은 끈 채) · `phone light` · `phone stop` | scrcpy 래퍼. APK 를 창에 끌어다 놓으면 설치됩니다 |
+| 폰 화면 미러링 | `phone` · `phone off`(폰 화면은 끈 채) · `phone light` · `phone stop` · `make-mirror-app` | scrcpy 래퍼. APK 를 창에 끌어다 놓으면 설치됩니다. `make-mirror-app` 을 한 번 실행하면 「폴드8 화면」「폴드8 화면 (폰 끄고)」 런처 앱이 생겨 Dock·Spotlight·Raycast 에서 클릭 한 번으로 무선 미러링을 엽니다 |
 | 폰을 맥 보조 모니터로 | `screen2 [해상도]` · `screen2 stop` | DeskPad(가상 디스플레이) + Deskreen CE(브라우저 스트리밍). 보기 전용 |
 | 폰 카메라를 맥 웹캠으로 | `phone-cam` · `phone-cam vcam`(OBS 가상 카메라까지) · `stop / off / status` | 끊기면 스스로 다시 붙습니다 |
 | 홈 화면 폴더 정리 | `phone-home ls --folders` · `folder` · `add` · `rename` · `pull` · `move` · `drop-empty-pages` | 루트 없이 사람 손동작을 adb 로 흉내 냅니다. 위험 버튼 옆은 OCR 로 확인한 뒤에만 누릅니다 |

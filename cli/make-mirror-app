@@ -1,0 +1,72 @@
+#!/bin/bash
+# make-mirror-app — 폰 화면 미러링을 Dock·Spotlight·Raycast 에서 한 번에 여는 런처 앱을 만든다
+#
+# 만들어지는 것 (기본 위치 ~/Applications):
+#   「폴드8 화면.app」           = phone        (미러링 + 소리는 맥으로)
+#   「폴드8 화면 (폰 끄고).app」 = phone off    (폰 화면은 끈 채 맥에서만 조작)
+#
+# 사용법:
+#   make-mirror-app                       기본 이름·위치로 두 개 생성
+#   make-mirror-app --name "내 폰 화면"    앱 이름 바꾸기
+#   make-mirror-app --icon my.icns        아이콘 지정(없으면 기본 아이콘)
+#   make-mirror-app --dir /Applications   설치 위치 바꾸기
+#
+# 런처는 이 저장소의 cli/phone 을 절대경로로 부른다. 저장소를 옮기면 다시 실행하면 된다.
+set -euo pipefail
+
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+PHONE="$CB_DIR/phone"
+NAME="폴드8 화면"; ICON=""; DEST="$HOME/Applications"
+while [ $# -gt 0 ]; do case "$1" in
+  --name) NAME="$2"; shift 2;;
+  --icon) ICON="$2"; shift 2;;
+  --dir)  DEST="$2"; shift 2;;
+  -h|--help) sed -n 2,14p "$0"; exit 0;;
+  *) echo "알 수 없는 옵션: $1" >&2; exit 2;;
+esac; done
+[ -x "$PHONE" ] || { echo "phone 스크립트를 찾을 수 없습니다: $PHONE" >&2; exit 1; }
+[ -z "$ICON" ] || [ -f "$ICON" ] || { echo "아이콘 파일이 없습니다: $ICON" >&2; exit 1; }
+mkdir -p "$DEST"
+
+make_app() {  # $1=앱 이름  $2=phone 모드(빈 값=기본)  $3=번들 ID 접미사
+  local app="$DEST/$1.app"
+  mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+  cat > "$app/Contents/MacOS/run" <<EOF
+#!/bin/bash
+# $1 — make-mirror-app 이 만든 런처. 실제 로직은 phone 스크립트에 있다.
+PHONE="$PHONE"
+if [ ! -x "\$PHONE" ]; then
+  osascript -e 'display alert "phone 스크립트를 찾을 수 없습니다" message "make-mirror-app 을 다시 실행하세요"'
+  exit 1
+fi
+OUT=\$("\$PHONE" $2 2>&1) || true
+# 성공하면 창만 조용히 뜬다 — 실패했을 때만 알린다
+if ! /usr/bin/pgrep -x scrcpy >/dev/null; then
+  MSG=\$(echo "\$OUT" | tail -4 | sed 's/"/\\\\"/g')
+  osascript -e "display alert \"폰 연결 실패\" message \"\$MSG\""
+fi
+EOF
+  chmod +x "$app/Contents/MacOS/run"
+  local icon_key=""
+  if [ -n "$ICON" ]; then cp "$ICON" "$app/Contents/Resources/AppIcon.icns"; icon_key="<key>CFBundleIconFile</key><string>AppIcon</string>"; fi
+  cat > "$app/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>$1</string>
+  <key>CFBundleDisplayName</key><string>$1</string>
+  <key>CFBundleExecutable</key><string>run</string>
+  <key>CFBundleIdentifier</key><string>io.github.clipbridge.mirror$3</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>LSUIElement</key><true/>
+  $icon_key
+</dict></plist>
+EOF
+  echo "✅ $app"
+}
+
+make_app "$NAME" "" ""
+make_app "$NAME (폰 끄고)" "off" ".off"
+echo "Spotlight·Raycast 에서 「${NAME}」으로 찾을 수 있습니다. 메뉴바 이름은 scrcpy 창이 뜬 뒤 창 제목(Galaxy Z Fold 8)으로 보입니다."
