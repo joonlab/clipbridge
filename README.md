@@ -182,9 +182,9 @@ adb shell pm grant kr.joonlab.clipbridge android.permission.READ_SMS   # 문자 
 <!-- VIDEO:START -->
 ### 홍보 영상
 
-[![홍보 영상 (가로 16:9, 72초) — 누르면 재생 화면으로 갑니다](docs/images/video-poster.png)](docs/video/promo_16x9.mp4)
+[![홍보 영상 (가로 16:9, 65초) — 누르면 재생 화면으로 갑니다](docs/images/video-poster.png)](docs/video/promo_16x9.mp4)
 
-▶ [가로 16:9 · 72초](docs/video/promo_16x9.mp4) · ▶ [세로 9:16 · 68초](docs/video/promo_9x16.mp4) — 영상 속 화면은 설명용 목업입니다.
+▶ [가로 16:9 · 65초](docs/video/promo_16x9.mp4) · ▶ [세로 9:16 · 64초](docs/video/promo_9x16.mp4) — 영상 속 화면은 설명용 목업입니다.
 <!-- VIDEO:END -->
 
 ## 관련 프로젝트
