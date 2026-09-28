@@ -1,24 +1,24 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta name="shot" content="w=683,h=1800,scale=1">
+<meta name="shot" content="w=1296,h=1800,scale=1">
 <title>장면 2 · 폰 커버 화면 — 메신저 알림</title>
 <link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
 <script src="https://mockup-kit.invalid/kit.js"></script>
 <style>
-  .screen { zoom: 1.7075; width: 400px; height: 1054px;
+  /* 폴드8 커버 화면 0.72:1 영역 — 360 x 500dp 를 3.6배 */
+  .screen { zoom: 3.6; width: 360px; height: 500px; border-radius: 0;
     background: linear-gradient(180deg, #13302C 0%, #0B1B19 55%, #070D0C 100%); }
-  .status-bar { height: 50px; font-size: 20px; padding: 0 30px; }
-  .status-bar .sb-icons { font-size: 22px; } .status-bar .sb-batt { font-size: 18px; }
-  .clockbig { text-align: center; color: #F2F5F4; margin-top: 70px; }
-  .clockbig .t { font-size: 104px; line-height: 110px; font-weight: 300; letter-spacing: -2px; }
-  .clockbig .d { font-size: 24px; line-height: 32px; opacity: .85; margin-top: 6px; }
-  .stack { margin: 60px 18px 0; display: flex; flex-direction: column; gap: 14px; }
-  .notif { border-radius: 28px; padding: 20px 22px; }
-  .notif .notif-head { font-size: 20px; line-height: 26px; gap: 10px; }
-  .notif .notif-head .ico { font-size: 22px; color: var(--accent); }
-  .notif .notif-title { font-size: 28px; line-height: 38px; margin-top: 8px; }
-  .notif .notif-body { font-size: 26px; line-height: 36px; }
-  .nav-handle { position: absolute; bottom: 10px; left: 0; right: 0; }
+  .status-bar { height: 26px; font-size: 12px; padding: 0 18px; }
+  .clockbig { text-align: center; color: #F2F5F4; margin-top: 18px; }
+  .clockbig .t { font-size: 64px; line-height: 68px; font-weight: 300; letter-spacing: -1px; }
+  .clockbig .d { font-size: 16px; line-height: 22px; opacity: .85; margin-top: 2px; }
+  .stack { margin: 22px 14px 0; display: flex; flex-direction: column; gap: 10px; }
+  .notif { border-radius: 20px; padding: 14px 16px; }
+  .notif .notif-head { font-size: 14px; line-height: 18px; gap: 6px; }
+  .notif .notif-head .ico { font-size: 15px; color: var(--accent); display: flex; }
+  .notif .notif-title { font-size: 21px; line-height: 28px; margin-top: 6px; }
+  .notif .notif-body { font-size: 20px; line-height: 28px; }
+  .nav-handle { position: absolute; bottom: 6px; left: 0; right: 0; }
 </style></head><body>
 <div class="screen dark app-clipbridge">
   <div class="status-bar on-dark" data-time="3:05"></div>
@@ -32,7 +32,6 @@
     <div class="notif">
       <div class="notif-head"><span class="ico"><i data-icon="download"></i></span><span>택배</span><span>· 2분 전</span></div>
       <div class="notif-title">배송 출발</div>
-      <div class="notif-body">오늘 오후 도착 예정입니다</div>
     </div>
   </div>
   <div class="nav-handle"></div>

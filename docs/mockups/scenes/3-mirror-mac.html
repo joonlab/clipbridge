@@ -1,25 +1,25 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<meta name="shot" content="w=1800,h=1103,scale=1">
+<meta name="shot" content="w=1800,h=1125,scale=1">
 <title>장면 3 · 맥 화면 — 폰 화면은 끄고 미러링 창으로 조작</title>
 <link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
 <script src="https://mockup-kit.invalid/kit.js"></script>
 <style>
-  .desk { zoom: 2.25; width: 800px; height: 490px; position: relative; overflow: hidden;
+  .desk { zoom: 2.25; width: 800px; height: 500px; position: relative; overflow: hidden;
     background: radial-gradient(120% 90% at 20% 10%, #CFE7E2 0%, #9FC7C0 45%, #6E9E97 100%); }
   .mac-menubar { font-size: 14px; }
-  .term { position: absolute; left: 22px; top: 170px; width: 340px; height: 180px; }
+  .term { position: absolute; left: 16px; top: 250px; width: 276px; height: 160px; z-index: 1; }
   .term .terminal-body { font-size: 15px; line-height: 24px; }
-  /* scrcpy 창: 제목 막대 + 폰 펼침 화면 (832x940 비율) */
-  .mirror { position: absolute; right: 26px; top: 38px; width: 392px; height: 446px; }
+  /* scrcpy 창: 제목 막대 + 폴드8 펼친 화면 가로(1.32:1) — 476 x 360 */
+  .mirror { position: absolute; right: 18px; top: 44px; width: 476px; height: 392px; z-index: 2; }
   .mirror .mac-titlebar { height: 32px; }
   .mirror .mac-title { font-size: 13.5px; left: 60px; right: 20px; }
   .ph { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-size: 17px; line-height: 25px; }
   .ph .status-bar { height: 26px; font-size: 12px; padding: 0 14px; }
-  .ph .app-bar { height: 50px; }
+  .ph .app-bar { height: 46px; }
   .ph .app-bar .title { font-size: 19px; }
-  .ph .content { flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-  .ph .msg { font-size: 17px; line-height: 24px; padding: 9px 13px; }
+  .ph .content { flex: 1; padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .ph .msg { font-size: 18px; line-height: 25px; padding: 9px 14px; }
   .ph .input-bar { padding: 8px 10px; }
   .ph .input { font-size: 17px; line-height: 23px; padding: 10px 14px; min-height: 0; }
   .ph .send-btn { width: 42px; height: 42px; }
