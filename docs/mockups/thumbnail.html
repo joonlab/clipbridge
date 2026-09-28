@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
 <script src="https://mockup-kit.invalid/kit.js"></script>
 <style>
-  .layout { position: absolute; inset: 0; padding: 0 80px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 40px; }
+  .layout { position: absolute; inset: 0; padding: 0 80px; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 40px; }
   .txt { display: flex; flex-direction: column; gap: 20px; }
   .brand { display: flex; align-items: center; gap: 18px; }
   .brand img { width: 84px; height: 84px; border-radius: 20px; }
@@ -15,6 +15,14 @@
   .big { font-size: 40px; font-weight: 700; line-height: 1.3; letter-spacing: -.5px; }
   .sub { font-size: 22px; color: var(--dim); line-height: 1.5; }
   .chips .chip { font-size: 17px; padding: 8px 16px; }
+  /* 넓어진 커버에 맞춰 목록을 크게 흘린다 */
+  .devices .screen .content { gap: 14px; padding-top: 18px; }
+  .devices .card { padding: 18px; }
+  .devices .card-title { font-size: 18px; line-height: 25px; }
+  .devices .meta { font-size: 14.5px; line-height: 21px; }
+  .devices .section-label { font-size: 14px; }
+  .devices .list-row { padding: 18px 16px; gap: 14px; }
+  .devices .list-row .ico { font-size: 24px; }
   .devices { display: flex; align-items: center; justify-content: center; gap: 24px; }
 </style>
 </head>
@@ -28,7 +36,7 @@
       <div class="chips"><span class="chip on">클립보드</span><span class="chip">파일</span><span class="chip">링크</span><span class="chip">알림</span><span class="chip">문자 읽기</span><span class="chip">화면·카메라</span></div>
     </div>
     <div class="devices">
-      <div class="fold-cover" style="--zoom:.88">
+      <div class="fold-cover" style="--zoom:.92">
         <div class="screen">
           <div class="status-bar" data-time="2:31"></div>
           <div class="app-bar"><img class="mark" data-app="clipbridge" alt=""><span class="title">ClipBridge</span></div>

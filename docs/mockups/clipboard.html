@@ -9,9 +9,9 @@
 <style>
   .layout { position: absolute; inset: 0; padding: 40px 48px; display: flex; flex-direction: column; gap: 18px; }
   .head { display: flex; flex-direction: column; gap: 6px; }
-  .row2 { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-  .flow { display: flex; align-items: center; gap: 22px; }
-  .steps { display: flex; flex-direction: column; gap: 12px; width: 300px; }
+  .row2 { flex: 1; display: grid; align-content: center; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .flow { display: flex; align-items: center; gap: 20px; }
+  .steps { display: flex; flex-direction: column; gap: 14px; width: 290px; flex: none; }
   .step { display: flex; gap: 12px; align-items: flex-start; }
   .num { flex: none; width: 30px; height: 30px; border-radius: 15px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
   .qs-top { padding: 6px 4px 2px; display: flex; justify-content: space-between; align-items: center; }
@@ -33,7 +33,7 @@
       <div class="col-title"><span class="tag accent">맥 → 폰</span>자동 · 1~2초</div>
       <div class="flow">
         <div class="steps">
-          <div class="mac-window" style="width:300px">
+          <div class="mac-window" style="width:290px">
             <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">메모</span></div>
             <div class="mac-body snip">
               <div><b>장보기 목록</b></div>
@@ -45,7 +45,7 @@
           <div class="step"><span class="num">2</span><div><div class="card-title">폰 클립보드에 들어감</div><div class="meta">폰 앱의 수신 서버가 받아 넣습니다. 비밀번호 관리자에서 복사한 것은 보내지 않습니다</div></div></div>
         </div>
         <div>
-          <div class="fold-cover" style="--zoom:.66">
+          <div class="fold-cover" style="--zoom:.8">
             <div class="screen">
               <div class="status-bar" data-time="2:31"></div>
               <div class="app-bar"><span class="title">메시지</span></div>
@@ -71,7 +71,7 @@
       <div class="col-title"><span class="tag accent">폰 → 맥</span>두 번 누르기</div>
       <div class="flow">
         <div>
-          <div class="fold-cover dark" style="--zoom:.66">
+          <div class="fold-cover dark" style="--zoom:.8">
             <div class="screen">
               <div class="status-bar" data-time="2:32"></div>
               <div class="content">
@@ -98,7 +98,7 @@
         <div class="steps">
           <div class="step"><span class="num">1</span><div><div class="card-title">폰에서 복사한 뒤 쓸어내리기</div><div class="meta">백그라운드에서는 클립보드를 읽을 수 없어서 사람이 한 번 불러 줍니다</div></div></div>
           <div class="step"><span class="num">2</span><div><div class="card-title">「맥으로 복사」 타일 탭</div><div class="meta">잠깐 뜬 창이 포커스를 얻은 뒤에 읽어서 맥으로 보냅니다</div></div></div>
-          <div class="mac-window" style="width:300px">
+          <div class="mac-window" style="width:290px">
             <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">메모</span></div>
             <div class="mac-body snip">
               <div class="dim">맥에서 <b>⌘V</b></div>

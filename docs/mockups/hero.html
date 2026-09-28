@@ -7,11 +7,13 @@
 <link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
 <script src="https://mockup-kit.invalid/kit.js"></script>
 <style>
-  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 34px; }
-  .mac-col { width: 450px; display: flex; flex-direction: column; gap: 18px; }
+  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 30px; }
+  .mac-col { width: 430px; display: flex; flex-direction: column; gap: 18px; }
   .mac-col .mac-notification { width: 100%; }
   .other-app { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
   .pane .section-label:first-child { margin-top: 0; }
+  /* 커버가 넓어져 메모 본문과 공유 시트가 여유 있게 들어간다 */
+  .fold-cover .body { font-size: 15.5px; line-height: 24px; }
 </style>
 </head>
 <body>
@@ -31,7 +33,7 @@
 
     <!-- 펼친 화면: ClipBridge 홈 -->
     <div>
-      <div class="fold-open" style="--zoom:.76">
+      <div class="fold-open" style="--zoom:.7">
         <div class="screen">
           <div class="status-bar" data-time="2:30"></div>
           <div class="app-bar">
@@ -88,7 +90,7 @@
 
     <!-- 커버 화면: 공유 시트 -->
     <div>
-      <div class="fold-cover" style="--zoom:.76">
+      <div class="fold-cover" style="--zoom:.7">
         <div class="screen">
           <div class="status-bar" data-time="2:30"></div>
           <div class="app-bar"><span class="icon-btn" style="margin-left:-10px"><i data-icon="arrow-left"></i></span><span class="title">메모</span><span class="spacer"></span></div>

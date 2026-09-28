@@ -7,10 +7,16 @@
 <link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
 <script src="https://mockup-kit.invalid/kit.js"></script>
 <style>
-  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 44px; }
+  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 48px; }
   .mac-col { width: 760px; display: flex; flex-direction: column; gap: 16px; }
   .banners { display: flex; flex-direction: column; gap: 10px; align-self: flex-end; width: 420px; }
   .banners .mac-notification { width: 100%; }
+  /* 넓어진 커버에 맞춰 알림 카드를 키운다 */
+  .fold-cover .notif-stack { gap: 10px; }
+  .fold-cover .notif { padding: 16px 18px; }
+  .fold-cover .notif .notif-head { font-size: 13.5px; line-height: 18px; }
+  .fold-cover .notif .notif-title { font-size: 18px; line-height: 26px; margin-top: 4px; }
+  .fold-cover .notif .notif-body { font-size: 16px; line-height: 23px; }
   .qs-top { padding: 6px 4px 2px; display: flex; justify-content: space-between; align-items: center; }
 </style>
 </head>
@@ -27,11 +33,11 @@
 
   <div class="layout">
     <div>
-      <div class="fold-cover" style="--zoom:.8">
+      <div class="fold-cover" style="--zoom:.86">
         <div class="screen">
           <div class="status-bar" data-time="3:05"></div>
           <div class="content">
-            <div class="qs-top"><span class="t-sheet">알림</span><span class="icon-btn"><i data-icon="settings"></i></span></div>
+            <div class="qs-top"><span class="t-sheet" style="font-size:20px">알림</span><span class="icon-btn"><i data-icon="settings"></i></span></div>
             <div class="notif-stack">
               <div class="notif">
                 <div class="notif-head"><span class="ico"><i data-icon="message"></i></span><span>메신저</span><span>· 지금</span></div>
