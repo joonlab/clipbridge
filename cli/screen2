@@ -1,0 +1,51 @@
+#!/bin/bash
+# screen2 — 폴드8을 맥의 보조 모니터로 (DeskPad 가상 디스플레이 + Deskreen 스트리밍)
+#
+# 구조:  DeskPad 가 macOS 에 가상 모니터를 만들고, Deskreen 이 그 화면만 골라 웹으로 뿌린다.
+#        폰은 브라우저로 접속만 하면 된다(앱 설치 불필요).
+#
+# 사용법: screen2 [해상도]   예) screen2 / screen2 1280x800 / screen2 stop
+set -uo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+RES="${1:-1440x900}"
+[ "$RES" = "stop" ] && {
+  osascript -e 'quit app "Deskreen CE"' 2>/dev/null
+  osascript -e 'quit app "DeskPad"' 2>/dev/null
+  echo "✅ 종료"; exit 0
+}
+
+# 1) 가상 디스플레이 — ⚠️ DeskPad 창을 닫으면 디스플레이도 사라진다
+if ! pgrep -x DeskPad >/dev/null; then
+  open -a DeskPad; sleep 4
+fi
+
+# ⚠️ DeskPad 창이 «자기가 만든 가상 화면» 위에 있으면 무한 거울이 된다(실측).
+#    좌표가 음수면 가상 화면 영역이므로 본 화면으로 되돌린다.
+POS=$(osascript -e 'tell application "System Events" to tell process "DeskPad" to return position of window 1' 2>/dev/null || true)
+case "$POS" in -*) osascript -e 'tell application "System Events" to tell process "DeskPad" to set position of window 1 to {60, 60}' 2>/dev/null; echo "  DeskPad 창을 본 화면으로 되돌림(무한거울 방지)";; esac
+
+# 2) 해상도 — DeskPad 는 창 크기와 해상도가 별개다. displayplacer 로 바꾼다.
+ID=$(displayplacer list 2>/dev/null | awk '/Persistent screen id:/{id=$4} /Type:/{if ($0 !~ /MacBook/) {print id; exit}}')
+if [ -n "$ID" ]; then
+  W="${RES%x*}"; H="${RES#*x}"
+  displayplacer "id:$ID res:$RES scaling:off origin:(-$W,0) degree:0" >/dev/null 2>&1 \
+    && echo "  해상도 $RES (본 화면 왼쪽에 배치)"
+fi
+
+# 3) 스트리밍
+pgrep -f "Deskreen CE" >/dev/null || { open -a "Deskreen CE"; sleep 6; }
+
+IP=$(ipconfig getifaddr en0 2>/dev/null)
+TS=$(ifconfig 2>/dev/null | grep -oE 'inet 100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\.[0-9.]+' | awk '{print $2}' | head -1)
+cat <<MSG
+
+  폰 브라우저에서 접속:
+    http://$IP:3131          (같은 Wi-Fi — 5GHz 권장)
+    http://${TS:-—}:3131      (Tailscale — 다른 망일 때)
+
+  ★ Deskreen 화면 선택에서 반드시 «DeskPad Display» 를 고를 것.
+    (Color LCD 를 고르면 보조 모니터가 아니라 단순 미러링이 된다)
+
+  끄기: screen2 stop
+MSG

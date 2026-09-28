@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="shot" content="w=1600,h=1000,scale=2">
+<title>클립보드 양방향</title>
+<link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
+<script src="https://mockup-kit.invalid/kit.js"></script>
+<style>
+  .layout { position: absolute; inset: 0; padding: 40px 48px; display: flex; flex-direction: column; gap: 18px; }
+  .head { display: flex; flex-direction: column; gap: 6px; }
+  .row2 { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .flow { display: flex; align-items: center; gap: 22px; }
+  .steps { display: flex; flex-direction: column; gap: 12px; width: 300px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; }
+  .num { flex: none; width: 30px; height: 30px; border-radius: 15px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+  .qs-top { padding: 6px 4px 2px; display: flex; justify-content: space-between; align-items: center; }
+  .col-title { font-size: 22px; font-weight: 700; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; }
+  .snip { font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="canvas desk-accent app-clipbridge">
+<div class="layout">
+  <div class="head">
+    <div class="canvas-title">클립보드는 한쪽만 자동입니다</div>
+    <div class="canvas-sub">Android 는 백그라운드 앱의 클립보드 «읽기»만 막고 «쓰기»는 막지 않습니다. 그래서 맥 → 폰은 복사만 하면 되고, 폰 → 맥은 두 번 누릅니다.</div>
+  </div>
+
+  <div class="row2">
+    <!-- 맥 → 폰 -->
+    <div>
+      <div class="col-title"><span class="tag accent">맥 → 폰</span>자동 · 1~2초</div>
+      <div class="flow">
+        <div class="steps">
+          <div class="mac-window" style="width:300px">
+            <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">메모</span></div>
+            <div class="mac-body snip">
+              <div><b>장보기 목록</b></div>
+              <div class="dim">우유 2개, 달걀 한 판, 두부, 대파</div>
+              <div class="row gap-8" style="margin-top:6px"><span class="pill"><i data-icon="command"></i> C 로 복사</span></div>
+            </div>
+          </div>
+          <div class="step"><span class="num">1</span><div><div class="card-title">맥에서 복사</div><div class="meta">clipwatch 가 변경을 감지해 clipd 로 넘깁니다</div></div></div>
+          <div class="step"><span class="num">2</span><div><div class="card-title">폰 클립보드에 들어감</div><div class="meta">폰 앱의 수신 서버가 받아 넣습니다. 비밀번호 관리자에서 복사한 것은 보내지 않습니다</div></div></div>
+        </div>
+        <div>
+          <div class="fold-cover" style="--zoom:.66">
+            <div class="screen">
+              <div class="status-bar" data-time="2:31"></div>
+              <div class="app-bar"><span class="title">메시지</span></div>
+              <div class="content">
+                <div class="msg">오늘 장 볼 거 있어?</div>
+                <div class="msg me">잠깐만, 목록 보낼게</div>
+              </div>
+              <div class="snackbar" style="margin:0 12px 10px">붙여넣기: 장보기 목록 — 우유 2개, 달걀…</div>
+              <div class="input-bar">
+                <div class="input">장보기 목록 — 우유 2개, 달걀 한 판, 두부, 대파</div>
+                <span class="send-btn"><i data-icon="send"></i></span>
+              </div>
+              <div class="nav-handle"></div>
+            </div>
+          </div>
+          <div class="device-label">폰에서 바로 붙여넣기</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 폰 → 맥 -->
+    <div>
+      <div class="col-title"><span class="tag accent">폰 → 맥</span>두 번 누르기</div>
+      <div class="flow">
+        <div>
+          <div class="fold-cover dark" style="--zoom:.66">
+            <div class="screen">
+              <div class="status-bar" data-time="2:32"></div>
+              <div class="content">
+                <div class="qs-top"><span class="t-sheet">빠른 설정</span><span class="icon-btn"><i data-icon="settings"></i></span></div>
+                <div class="qs-panel">
+                  <div class="qs-grid">
+                    <div class="qs-tile on"><span class="qs-ico"><i data-icon="clipboard"></i></span><div class="grow"><div class="qs-name">맥으로 복사</div><div class="qs-sub">탭하면 보냄</div></div></div>
+                    <div class="qs-tile"><span class="qs-ico"><i data-icon="wifi"></i></span><div class="grow"><div class="qs-name">Wi-Fi</div><div class="qs-sub">집</div></div></div>
+                    <div class="qs-tile"><span class="qs-ico"><i data-icon="bluetooth"></i></span><div class="grow"><div class="qs-name">블루투스</div><div class="qs-sub">꺼짐</div></div></div>
+                    <div class="qs-tile"><span class="qs-ico"><i data-icon="flashlight"></i></span><div class="grow"><div class="qs-name">손전등</div><div class="qs-sub">꺼짐</div></div></div>
+                  </div>
+                  <div class="qs-slider" style="--v:64%"><i data-icon="sun"></i></div>
+                </div>
+                <div class="card ok" style="margin-top:8px">
+                  <div class="card-row"><i data-icon="circle-check"></i><span class="card-title">맥으로 보냈어요</span></div>
+                  <div class="meta">31자 · 택배 운송장 번호 1234-5678…</div>
+                </div>
+              </div>
+              <div class="nav-handle"></div>
+            </div>
+          </div>
+          <div class="device-label">빠른 설정 타일</div>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="num">1</span><div><div class="card-title">폰에서 복사한 뒤 쓸어내리기</div><div class="meta">백그라운드에서는 클립보드를 읽을 수 없어서 사람이 한 번 불러 줍니다</div></div></div>
+          <div class="step"><span class="num">2</span><div><div class="card-title">「맥으로 복사」 타일 탭</div><div class="meta">잠깐 뜬 창이 포커스를 얻은 뒤에 읽어서 맥으로 보냅니다</div></div></div>
+          <div class="mac-window" style="width:300px">
+            <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">메모</span></div>
+            <div class="mac-body snip">
+              <div class="dim">맥에서 <b>⌘V</b></div>
+              <div><b>택배 운송장 번호 1234-5678</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

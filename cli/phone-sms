@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# phone-sms — 폰의 문자를 맥에서 읽는다. (보내기는 확인을 거쳐 따로)
+#
+#   phone-sms                        최근 20통
+#   phone-sms list 50                최근 50통
+#   phone-sms read <번호>            그 상대와 주고받은 것
+#   phone-sms search 인증            본문 검색
+#   phone-sms send <번호> <내용>      보내기 (보내기 전에 한 번 묻는다)
+#   phone-sms send -y <번호> <내용>   묻지 않고 보내기
+#
+# 번호 표기가 제각각이라(010-… · +8210-… · 하이픈 유무) 끝 8자리로 맞춘다.
+set -uo pipefail
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+FMT="$CB_DIR/_sms_format.py"
+die() { printf '%s\n' "$1" >&2; exit 1; }
+
+# 포맷터를 별도 파일로 둔 이유: `python3 - <<EOF` 로 쓰면 heredoc 이 stdin 을 차지해
+# 파이프로 들어온 JSON 을 읽지 못한다(조용히 "응답을 읽지 못했다"가 된다).
+show() { python3 "$FMT"; }
+get()  { curl -s -m 10 -H "X-ClipBridge-Token: $TOKEN" "http://$PHONE:8788/sms?$1"; }
+enc()  { python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$1"; }
+
+cb_need phone token
+cmd="${1-list}"
+case "$cmd" in
+  list|"")
+    get "limit=${2-20}" | show ;;
+  read)
+    [ $# -ge 2 ] || die "번호를 줄 것 — phone-sms read <번호>"
+    get "with=$(enc "$2")&limit=${3-40}" | show ;;
+  search)
+    [ $# -ge 2 ] || die "검색어를 줄 것 — phone-sms search 인증"
+    get "q=$(enc "$2")&limit=${3-30}" | show ;;
+
+  send)
+    shift
+    YES=0; [ "${1-}" = "-y" ] && { YES=1; shift; }
+    [ $# -ge 2 ] || die "사용법: phone-sms send [-y] <번호> <내용>"
+    to="$1"; shift; text="$*"
+    h=$(curl -s -m 5 "http://$PHONE:8788/health") || die "폰에 못 닿는다"
+    case "$h" in *'"canSendSms":true'*) ;; *) die "폰에 SEND_SMS 권한이 없다" ;; esac
+    if [ "$YES" -eq 0 ]; then
+      # 문자는 회수가 안 된다 — 기본은 반드시 묻는다
+      printf '받는 사람 : %s\n내용      : %s\n\n보낼까요? [y/N] ' "$to" "$text"
+      read -r ans
+      case "$ans" in y|Y|yes) ;; *) echo "취소했다"; exit 1 ;; esac
+    fi
+    resp=$(python3 -c 'import json,sys;print(json.dumps({"to":sys.argv[1],"text":sys.argv[2]}))' "$to" "$text" \
+      | curl -s -m 15 -X POST "http://$PHONE:8788/sms" \
+          -H "X-ClipBridge-Token: $TOKEN" -H "Content-Type: application/json" --data-binary @-)
+    case "$resp" in
+      *'"ok":true'*) echo "✅ 보냈다 → $to" ;;
+      *) die "실패: $resp" ;;
+    esac ;;
+
+  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

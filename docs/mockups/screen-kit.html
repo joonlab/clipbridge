@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="shot" content="w=1600,h=1000,scale=2">
+<title>화면 · 카메라 · 홈 화면 CLI</title>
+<link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
+<script src="https://mockup-kit.invalid/kit.js"></script>
+<style>
+  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; padding: 36px 44px; display: grid; grid-template-columns: 420px 1fr; gap: 36px; align-items: center; }
+  .left { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .mirror { width: max-content; }
+  .mirror .mac-body { display: flex; justify-content: center; align-items: flex-start; padding: 18px; background: var(--panel2); }
+  .mirror .mac-body > div { flex: none; }
+  .icons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 8px; padding: 18px 14px; }
+  .ic { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+  .ic .sq { width: 52px; height: 52px; border-radius: 16px; background: var(--panel2); border: 1px solid var(--border); display: grid; place-items: center; font-size: 22px; color: var(--dim); }
+  .ic .sq.folder { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 9px; place-items: stretch; }
+  .ic .sq.folder b { border-radius: 5px; background: var(--accent-tint); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="canvas app-clipbridge">
+  <div class="mac-menubar">
+    <span class="app-name">Terminal</span><span>셸</span><span>편집</span><span>보기</span>
+    <div class="extras">
+      <span class="extra"><i data-icon="wifi"></i></span>
+      <span class="extra"><i data-icon="battery"></i></span>
+      <span class="clock">9월 28일 (일) 오후 4:10</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="left">
+      <div class="mac-window mirror">
+        <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">Galaxy Z Fold 8</span></div>
+        <div class="mac-body">
+          <div><div class="fold-cover" style="--zoom:.62">
+            <div class="screen">
+              <div class="status-bar" data-time="4:10"></div>
+              <div class="icons">
+                <div class="ic"><span class="sq"><i data-icon="message"></i></span>메시지</div>
+                <div class="ic"><span class="sq"><i data-icon="calendar"></i></span>캘린더</div>
+                <div class="ic"><span class="sq"><i data-icon="image"></i></span>갤러리</div>
+                <div class="ic"><span class="sq"><i data-icon="settings"></i></span>설정</div>
+                <div class="ic"><span class="sq folder"><b></b><b></b><b></b><b></b></span>업무</div>
+                <div class="ic"><span class="sq folder"><b></b><b></b><b></b><b></b></span>사진·영상</div>
+                <div class="ic"><span class="sq folder"><b></b><b></b><b></b><b></b></span>생활</div>
+                <div class="ic"><span class="sq folder"><b></b><b></b><b></b><b></b></span>도구</div>
+              </div>
+              <div class="nav-handle" style="margin-top:auto"></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+      <div class="device-label">phone off · 폰 화면은 끈 채 맥 창에서 조작</div>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar"><span class="traffic"><i></i><i></i><i></i></span><span class="t-title">zsh</span></div>
+      <div class="terminal-body"><span class="t-prompt">❯</span> <span class="t-b">phone off</span>
+▶ 폰에 연결 (off)
+<span class="t-ok">창이 떴습니다</span>  <span class="t-dim">⌘B 뒤로 · ⌘H 홈 · APK 드래그=설치</span>
+
+<span class="t-prompt">❯</span> <span class="t-b">phone-cam vcam</span>
+▶ 후면 메인 · 1080p
+<span class="t-ok">카메라 창이 떴습니다</span>  <span class="t-dim">OBS 가상 카메라 켬 → 화상회의 앱에서 선택</span>
+
+<span class="t-prompt">❯</span> <span class="t-b">screen2 1440x900</span>
+  해상도 1440x900 (본 화면 왼쪽에 배치)
+  폰 브라우저에서 접속:  <span class="t-accent">http://&lt;맥 주소&gt;:3131</span>
+  <span class="t-warn">Deskreen 화면 선택에서 «DeskPad Display» 를 고를 것</span>
+
+<span class="t-prompt">❯</span> <span class="t-b">phone-home ls --folders</span>
+<span class="t-dim">커버 · 4x5 · 2페이지</span>
+  1p  메시지 캘린더 갤러리 설정 …
+  2p  [업무] 메모 문서 메일   [사진·영상] 카메라 갤러리
+      [생활] 지도 날씨 택배   [도구] 계산기 시계 녹음
+
+<span class="t-prompt">❯</span> <span class="t-cursor"></span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

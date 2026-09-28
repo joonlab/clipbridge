@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""phone-home — 폴드8 홈 화면(One UI 런처)을 맥에서 정리한다: 폴더 만들기·채우기·이름·배치.
+
+왜 이런 방식인가:
+  삼성 런처 배치 DB 는 루트 없이 못 고친다. 그래서 사람이 하는 동작을 adb 로 흉내 낸다.
+  실측(2026-09-23)으로 확인한 경로만 쓴다 — 상세는 foldphone 스킬 references/home-screen.md.
+    · 폴더 만들기   = 아이콘 길게 → 「선택」 → 여러 개 체크(페이지 넘겨도 유지) → 「폴더 추가」
+    · 기존 폴더 채우기 = 폴더 ⊕(앱 선택) — ⚠️ 옮기지 않고 «복사»한다 → 홈 원본은 따로 「홈에서 삭제」
+    · 한글 입력     = adb input text 불가 → clip2phone 으로 폰 클립보드에 넣고 KEYCODE_PASTE
+    · 길게 누른 팝업 = uiautomator 덤프에 안 잡힌다 → 스크린샷 OCR(Vision)로 버튼 위치를 찾는다
+  🚨 팝업엔 「설치 삭제」「사용 중지」가 「홈에서 삭제」 바로 옆에 있다. OCR 로 두 위치를 함께 확인하고
+     떨어져 있을 때만 누른다. 좌표 추정 탭은 금지 — 메시지 아이콘 팝업엔 연락처 바로가기(전화)가 뜬다.
+
+사용법:
+  phone-home ls [--folders]                 페이지별 아이콘(+폴더 내용)
+  phone-home folder <이름> <앱>...          홈 아이콘들로 새 폴더
+  phone-home add <폴더> <앱>... [--keep-home]  기존 폴더에 추가(기본: 홈 원본 제거)
+  phone-home rename <폴더> <새이름>
+  phone-home pull <폴더> <앱> [--nth N]     폴더에서 빼기(홈에서 삭제 — 앱은 남는다)
+  phone-home unhome <앱>...                 홈 바로가기 제거(앱은 남는다)
+  phone-home move <이름> <행> <열>          1페이지 (행,열) 빈 칸으로 끌어 옮기기(1-base)
+  phone-home drop-empty-pages               아이콘 0개인 페이지만 삭제
+  phone-home shot [파일]                    지금 화면 캡처
+환경변수: PHONE_ADB=<ip:port> (없으면 연결된 기기 1대)
+⚠️ 실행 중에는 폰을 만지지 말 것. 화면을 점유한다. 커버/펼침은 자동 판별(접힘 상태를 바꾸는 건 사람).
+"""
+import html, os, re, subprocess, sys, time
+
+import shutil
+ADB = shutil.which('adb') or os.path.join(
+    os.environ.get('ANDROID_SDK_ROOT', os.path.expanduser('~/Library/Android/sdk')), 'platform-tools', 'adb')
+CLIP2PHONE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'clip2phone')
+HERE = os.path.dirname(os.path.realpath(__file__))
+CACHE = os.path.expanduser('~/.cache/phone-home'); os.makedirs(CACHE, exist_ok=True)
+OCR_SRC = os.path.join(HERE, 'launcher-ocr.swift'); OCR_BIN = os.path.join(CACHE, 'ocr')
+DEV = os.environ.get('PHONE_ADB')
+
+W = H = GB = 0; DISP = None      # set by detect()
+
+
+def log(*a): print(*a, flush=True)
+
+
+def adb(*a):
+    return subprocess.run([ADB] + (['-s', DEV] if DEV else []) + list(a), capture_output=True).stdout
+
+
+def sh(cmd): return adb('shell', cmd).decode(errors='replace')
+
+
+def dump():
+    for _ in range(6):     # 애니메이션 중엔 "could not get idle state" → 재시도
+        if 'ERROR' not in sh('uiautomator dump /sdcard/_home.xml 2>&1'): break
+        time.sleep(0.8)
+    x = adb('exec-out', 'cat', '/sdcard/_home.xml').decode(errors='replace')
+    out = []
+    for n in re.findall(r'<node [^>]*>', x):
+        g = lambda k: html.unescape(re.search(k + r'="([^"]*)"', n).group(1))
+        b = [int(v) for v in re.findall(r'\d+', g('bounds'))]
+        out.append(dict(text=g(' text'), desc=g('content-desc'), rid=g('resource-id').split('/')[-1],
+                        b=b, c=((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)))
+    return out
+
+
+def detect():
+    """커버(접힘)/메인(펼침)에 맞춰 화면 크기·독 위치·캡처 디스플레이를 정한다"""
+    global W, H, GB, DISP
+    state = sh('cmd device_state print-state').strip()
+    main = state not in ('0',)
+    home(); d = dump()
+    W, H = d[0]['b'][2], d[0]['b'][3]
+    hs = [n['b'][1] for n in d if n['rid'] == 'hotseat_container']
+    qsb = [n['b'][1] for n in d if n['rid'] == 'finder_qsb']
+    GB = min(hs + qsb) if (hs or qsb) else int(H * 0.77)
+    # screencap 은 디스플레이가 2개라 id 지정 필요. 포트 147=메인, 148=커버(Fold8 실측)
+    sf = sh('dumpsys SurfaceFlinger --display-id')
+    ids = dict((p, i) for i, p in re.findall(r'Display (\d+) .*?port=(\d+)', sf))
+    DISP = ids.get('147' if main else '148')
+    return main
+
+
+def clean(d):
+    d = re.sub(r', 알림 \d+개', '', d)
+    return re.sub(r', (선택됨|선택 안 됨)$', '', d)
+
+
+def icons(d=None):
+    d = d or dump(); res = {}
+    for n in d:
+        if n['rid'] in ('icon_container', 'folder_icon_container') and n['desc']:
+            n['name'] = clean(n['desc']).replace(', 폴더', '')
+            n['folder'] = n['rid'].startswith('folder')
+            n['sel'] = n['desc'].endswith('선택됨') and not n['desc'].endswith('선택 안 됨')
+            res.setdefault(n['name'], []).append(n)
+    return res
+
+
+def vis(ic):
+    """지금 페이지의 격자 아이콘만. 선택/편집 모드에선 옆 페이지가 가장자리에 1px 걸쳐 덤프된다 → 폭으로 거른다"""
+    return {k: [n for n in v if n['b'][0] >= 0 and n['b'][2] <= W and n['b'][2] - n['b'][0] > 100
+                and n['b'][1] < GB] for k, v in ic.items()}
+
+
+def sig(ic): return tuple(sorted(k for k, v in ic.items() if v))
+
+
+def tap(x, y, wait=0.7): sh(f'input tap {x} {y}'); time.sleep(wait)
+def nxt(): sh(f'input swipe {int(W*.85)} {int(H*.45)} {int(W*.12)} {int(H*.45)} 250'); time.sleep(1.3)
+def prv(): sh(f'input swipe {int(W*.12)} {int(H*.45)} {int(W*.85)} {int(H*.45)} 250'); time.sleep(1.3)
+def home(): sh('input keyevent 4'); time.sleep(0.4); sh('input keyevent 3'); time.sleep(1.2)
+
+
+def shot(path):
+    open(path, 'wb').write(adb('exec-out', 'screencap', '-p', *(['-d', DISP] if DISP else [])))
+    return path
+
+
+def ocr(path):
+    if not os.path.exists(OCR_BIN):
+        subprocess.run(['swiftc', '-O', OCR_SRC, '-o', OCR_BIN], check=True, capture_output=True)
+    o = subprocess.run([OCR_BIN, path], capture_output=True, text=True).stdout
+    return [(t.strip(), int(x), int(y)) for t, x, y in (l.split('\t') for l in o.splitlines() if l.count('\t') == 2)]
+
+
+def paste(text):
+    subprocess.run([CLIP2PHONE, text], capture_output=True); time.sleep(1.5)
+    sh('input keyevent 279'); time.sleep(0.8)          # KEYCODE_PASTE
+
+
+def longpress(x, y): sh(f'input swipe {x} {y} {x+2} {y+2} 1000'); time.sleep(1.3)
+
+
+def popup_safe_tap(want):
+    """길게 누른 팝업에서 want(「선택」/「홈에서 삭제」)를 OCR 로 찾아 누른다. 위험 버튼과 붙어 있으면 취소"""
+    rows = ocr(shot(os.path.join(CACHE, '_pop.png')))
+    hit = [(x, y) for t, x, y in rows if (t == want if want == '선택' else t.startswith(want[:-1]))]
+    rm = [(x, y) for t, x, y in rows if t.startswith('홈에서 삭')]
+    danger = [(x, y) for t, x, y in rows if t in ('설치 삭제', '사용 중지')]
+    ok = len(hit) == 1 and rm and abs(hit[0][1] - rm[0][1]) < 60        # 액션 줄에 있는 버튼만
+    ok = ok and all(abs(dx - hit[0][0]) > 120 or abs(dy - hit[0][1]) > 60 for dx, dy in danger)
+    if not ok:
+        sh('input keyevent 4'); log(f'  팝업 판정 실패({want}) → 취소'); return False
+    tap(*hit[0], wait=1.3); return True
+
+
+def pages():
+    home(); out = []; prev = None
+    for _ in range(10):
+        ic = vis(icons()); s = sig(ic)
+        if out and s == prev: break
+        prev = s; out.append(ic); nxt()
+    home(); return out
+
+
+def enter_select():
+    home(); ic = icons()
+    anchor = next((v[0] for k, v in ic.items() if not v[0]['folder']), None)
+    longpress(*anchor['c'])
+    if not popup_safe_tap('선택'): return False
+    d = dump()
+    if not any(n['rid'] == 'multi_select_create_folder' for n in d): return False
+    a = icons(d)[anchor['name']][0]
+    if a['sel']: tap(*a['c'])
+    return True
+
+
+def select_sweep(targets):
+    prev = None
+    for _ in range(10):
+        s = sig(vis(icons()))
+        if s == prev: break
+        prev = s; prv()
+    done = set(); prev = None
+    for _ in range(12):
+        ic = vis(icons()); s = sig(ic)
+        if s == prev: break
+        prev = s
+        for t in targets:
+            if t in done or not ic.get(t): continue
+            if not ic[t][0]['sel']: tap(*ic[t][0]['c'], wait=0.6)
+            done.add(t)
+        time.sleep(0.8); ic2 = vis(icons())
+        for t in list(done):                       # 덤프가 늦게 따라온다 → 한 번 더 읽고 판정
+            if ic2.get(t) and not ic2[t][0]['sel']:
+                time.sleep(1.0); ic3 = vis(icons())
+                if ic3.get(t) and not ic3[t][0]['sel']: done.discard(t)
+        nxt()
+    return [t for t in targets if t not in done]
+
+
+def toolbar(rid, text):
+    b = [n for n in dump() if n['rid'] == rid and n['text'] == text]
+    if len(b) != 1: return False
+    tap(*b[0]['c'], wait=1.8); return True
+
+
+def set_title(title):
+    ft = [n for n in dump() if n['rid'] == 'folder_title']
+    if not ft: return None
+    subprocess.run([CLIP2PHONE, title], capture_output=True); time.sleep(1.5)
+    tap(*ft[0]['c'], wait=1.0)
+    sh('input keycombination 113 29'); time.sleep(0.5)   # Ctrl+A → 붙여넣기로 덮어쓴다
+    sh('input keyevent 279'); time.sleep(0.8)
+    got = [n['text'] for n in dump() if n['rid'] == 'folder_title']
+    sh('input keyevent 66'); time.sleep(0.6)
+    return got
+
+
+def folder_items(d):
+    out, on = [], False
+    for n in d:
+        if n['rid'] == 'add_apps': on = True; continue
+        if on and n['rid'] == 'icon_container' and n['b'][1] < GB: out.append(clean(n['desc']))
+    return out
+
+
+def open_folder(name):
+    home()
+    for _ in range(10):
+        ic = vis(icons())
+        if ic.get(name) and ic[name][0]['folder']:
+            tap(*ic[name][0]['c'], wait=1.4); return True
+        nxt()
+    return False
+
+
+# ── 명령 ────────────────────────────────────────────────────────────
+def cmd_ls(folders=False):
+    ps = pages(); fl = {}
+    for i, ic in enumerate(ps):
+        order = sorted((v[0]['b'][1], v[0]['b'][0], k, v[0]['folder']) for k, v in ic.items() if v)
+        log(f'P{i+1}: ' + ' · '.join(('📁' if f else '') + k for _, _, k, f in order))
+        if folders:
+            for _, _, k, f in order:
+                if f and open_folder(k): fl[k] = folder_items(dump())
+    for k, v in fl.items(): log(f'📁{k} ({len(v)}): {", ".join(v)}')
+    home()
+
+
+def cmd_folder(title, apps):
+    if not enter_select(): log('선택 모드 진입 실패'); home(); return 1
+    miss = select_sweep(apps)
+    if miss: log(f'못 찾음 {miss} → 취소(아무것도 안 바뀜)'); home(); return 1
+    if not toolbar('multi_select_create_folder', '폴더 추가'): log('폴더 추가 버튼 없음'); home(); return 1
+    got = set_title(title); home()
+    log(f'[{title}] 생성 {len(apps)}개 · 이름칸={got}')   # 폴더는 «마지막으로 선택한 아이콘» 자리에 생긴다
+    return 0 if got == [title] else 1
+
+
+def cmd_add(folder, apps, keep_home=False):
+    if not open_folder(folder): log(f'{folder} 없음'); return 1
+    tap(*[n for n in dump() if n['rid'] == 'add_apps'][0]['c'], wait=2)
+    picked = []
+    for app in apps:
+        s = [n for n in dump() if n['rid'] in ('searchIcon', 'search_src_text', 'search_close_btn')]
+        si = [n for n in s if n['rid'] == 'searchIcon']
+        if si: tap(*si[0]['c'], wait=1.2)
+        else:
+            cl = [n for n in s if n['rid'] == 'search_close_btn']
+            if cl: tap(*cl[0]['c'], wait=0.8)
+        paste(app); time.sleep(0.7)
+        hits = [n for n in dump() if n['rid'] == 'title' and n['text'] == app]
+        # ⚠️ 이미 이 폴더에 든 앱은 목록에 안 나온다(검색 결과 없음)
+        if len(hits) != 1: log(f'  {app}: 검색 {len(hits)}건 → 건너뜀'); continue
+        tap(*hits[0]['c'], wait=0.8); picked.append(app)
+    tap(*[n for n in dump() if n['rid'] == 'doneButton'][0]['c'], wait=1.5)
+    items = folder_items(dump()); home()
+    log(f'[{folder}] {items}')
+    if keep_home: return 0
+    rm = [a for a in picked if a in items]
+    return cmd_unhome(rm) if rm else 0
+
+
+def cmd_unhome(apps):
+    if not enter_select(): log('선택 모드 진입 실패'); home(); return 1
+    miss = select_sweep(apps)
+    if miss: log(f'못 찾음 {miss} → 취소'); home(); return 1
+    ok = toolbar('multi_select_remove_shortcut', '홈에서 삭제')    # 옆의 multi_select_uninstall(사용 중지) 절대 아님
+    home(); log(f'홈 바로가기 제거 {"완료" if ok else "실패"}: {", ".join(apps)}'); return 0 if ok else 1
+
+
+def cmd_rename(folder, new):
+    if not open_folder(folder): log(f'{folder} 없음'); return 1
+    got = set_title(new); home(); log(f'[{folder}→{new}] 이름칸={got}'); return 0 if got == [new] else 1
+
+
+def cmd_pull(folder, app, nth=0):
+    if not open_folder(folder): log(f'{folder} 없음'); return 1
+    c = []; on = False
+    for n in dump():
+        if n['rid'] == 'add_apps': on = True; continue
+        if on and n['rid'] == 'icon_container' and n['b'][1] < GB and clean(n['desc']) == app: c.append(n['c'])
+    if len(c) <= nth: log(f'{app} #{nth} 없음'); home(); return 1
+    longpress(*c[nth])
+    if not popup_safe_tap('홈에서 삭제'): home(); return 1
+    items = folder_items(dump()); home(); log(f'[{folder}] {app} 뺌 → {items}'); return 0
+
+
+def cmd_move(name, row, col):
+    """평소 모드에서 하나씩 끌어 1페이지 빈 칸으로. 여러 개 선택 드래그는 페이지가 안 넘어간다(실측)"""
+    ps = pages(); idx = next((i for i, ic in enumerate(ps) if ic.get(name)), None)
+    if idx is None: log(f'{name} 없음'); return 1
+    p1 = ps[0]; cells = [n for v in p1.values() for n in v] or [n for v in ps[idx].values() for n in v]
+    cw, ch = cells[0]['b'][2] - cells[0]['b'][0], cells[0]['b'][3] - cells[0]['b'][1]
+    lay = [n for n in dump() if n['rid'] == 'wsCellLayout']; x0, y0 = lay[0]['b'][0], lay[0]['b'][1]
+    tx, ty = x0 + cw * (col - 1) + cw // 2, y0 + ch * (row - 1) + ch // 2
+    if any(abs(n['c'][0] - tx) < cw // 2 and abs(n['c'][1] - ty) < ch // 2 for v in p1.values() for n in v):
+        log('목표 칸이 비어 있지 않다 → 취소(떨어뜨리면 폴더로 합쳐진다)'); return 1
+    home()
+    for _ in range(idx): nxt()
+    x, y = vis(icons())[name][0]['c']
+    marks = {k for k, v in p1.items() if v}
+    sh(f'input motionevent DOWN {x} {y}'); time.sleep(1.3)
+    for k in range(1, 8): sh(f'input motionevent MOVE {x - k*25} {y + k*20}'); time.sleep(0.08)
+    arrived = idx == 0
+    for _ in range(idx * 2 + 2):
+        if arrived: break
+        for j in range(3): sh(f'input motionevent MOVE {18 + (j % 2) * 4} {int(H*0.6)}'); time.sleep(1.0)
+        sh(f'input motionevent MOVE {W//2} {int(H*0.65)}'); time.sleep(0.9)
+        lab = [t for t, lx, ly in ocr(shot(os.path.join(CACHE, '_dg.png'))) if 300 < lx < W - 300 and ly < GB]
+        arrived = any(t in marks for t in lab)
+    if not arrived:
+        sh(f'input motionevent MOVE {x} {y}'); time.sleep(1); sh(f'input motionevent UP {x} {y}')
+        log('1페이지 도착 실패 → 제자리'); home(); return 1
+    sh(f'input motionevent MOVE {tx} {ty}'); time.sleep(1.2); sh(f'input motionevent UP {tx} {ty}'); time.sleep(1.8)
+    home(); got = vis(icons()).get(name, [{}])[0].get('c')
+    log(f'{name}: 목표 ({tx},{ty}) → 실제 {got}'); return 0 if got == (tx, ty) else 1
+
+
+def empty_cell():
+    """지금 페이지에서 아이콘이 없는 칸의 중심 — 편집 모드 진입용 길게 누르기는 반드시 빈 칸에서"""
+    d = dump(); ic = [n for v in vis(icons(d)).values() for n in v]
+    lay = [n for n in d if n['rid'] == 'wsCellLayout']
+    if not ic or not lay: return None
+    cw, ch = ic[0]['b'][2] - ic[0]['b'][0], ic[0]['b'][3] - ic[0]['b'][1]
+    x0, y0, x1, y1 = lay[0]['b']
+    for r in range((y1 - y0) // ch):
+        for c in range((x1 - x0) // cw):
+            cx, cy = x0 + cw * c + cw // 2, y0 + ch * r + ch // 2
+            if cy < GB and not any(abs(n['c'][0] - cx) < cw // 2 and abs(n['c'][1] - cy) < ch // 2 for n in ic):
+                return cx, cy
+    return None
+
+
+def cmd_drop_empty_pages():
+    home(); e = empty_cell()
+    if not e: log('1페이지에 빈 칸이 없어 편집 모드로 못 들어감'); return 1
+    longpress(*e)
+    for _ in range(10):
+        time.sleep(0.8); d = dump()
+        cont = [n for n in d if n['rid'] == 'wsCellLayoutContainer' and n['b'][0] > 100 and n['b'][2] < W - 100]
+        if not cont: break
+        cb = cont[0]['b']
+        inside = [n for n in d if n['rid'] in ('icon_container', 'folder_icon_container')
+                  and n['b'][0] >= cb[0] and n['b'][2] <= cb[2] and n['b'][1] < GB]
+        dele = [n for n in d if n['desc'].endswith('삭제') and '페이지' in n['desc']]
+        title = dele[0]['desc'] if dele else None
+        if not inside and dele:                      # 아이콘 0개일 때만. 아이콘 있는 페이지 삭제 = 아이콘도 사라진다
+            tap(*dele[0]['c'], wait=1.5); log(f'삭제: {title}'); continue
+        sh(f'input swipe {W-300} {int(H*.45)} 300 {int(H*.45)} 250'); time.sleep(1.2)
+        t2 = [n['desc'] for n in dump() if n['desc'].endswith('삭제') and '페이지' in n['desc']]
+        if t2 and t2[0] == title: break
+    home(); return 0
+
+
+def main(argv):
+    if not argv or argv[0] in ('-h', '--help'): print(__doc__); return 0
+    c, a = argv[0], argv[1:]
+    main_screen = detect()
+    log(f'화면: {"펼침(메인)" if main_screen else "커버"} {W}x{H}')
+    if c == 'shot':
+        p = shot(a[0] if a else os.path.join(CACHE, 'shot.png')); log(p); return 0
+    if c == 'ls': return cmd_ls('--folders' in a) or 0
+    if c == 'folder' and len(a) >= 3: return cmd_folder(a[0], a[1:])
+    if c == 'add' and len(a) >= 2:
+        keep = '--keep-home' in a; a = [x for x in a if x != '--keep-home']; return cmd_add(a[0], a[1:], keep)
+    if c == 'rename' and len(a) == 2: return cmd_rename(*a)
+    if c == 'pull' and len(a) >= 2:
+        nth = int(a[a.index('--nth') + 1]) if '--nth' in a else 0; return cmd_pull(a[0], a[1], nth)
+    if c == 'unhome' and a: return cmd_unhome(a)
+    if c == 'move' and len(a) == 3: return cmd_move(a[0], int(a[1]), int(a[2]))
+    if c == 'drop-empty-pages': return cmd_drop_empty_pages()
+    print(__doc__); return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

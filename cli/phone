@@ -1,0 +1,47 @@
+#!/bin/bash
+# phone — 폴드8 화면을 맥에서 보고 조작한다 (scrcpy 래퍼)
+#
+# GUI 앱이라 셸 세션과 분리해 띄운다 — 터미널을 닫아도 창이 유지된다.
+#
+# 사용법:
+#   phone            기본 미러링
+#   phone off        폰 화면은 끈 채로 맥에서만 조작 (배터리↓, 남이 못 봄)
+#   phone light      저대역폭 (1024px / 30fps / 4Mbps)
+#   phone mute       소리는 폰에서 (맥으로 안 보냄)
+#   phone stop       종료
+set -euo pipefail
+
+# .app 번들에서 실행되면 PATH 가 /usr/bin:/bin 수준이라 scrcpy·adb 를 못 찾는다
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # PATH(adb·scrcpy) · CLIPBRIDGE_PHONE_HOST
+MODE="${1:-default}"
+
+[ "$MODE" = "stop" ] && { pkill -x scrcpy 2>/dev/null && echo "✅ 종료" || echo "실행 중이 아님"; exit 0; }
+
+
+# 연결·기기선택 로직은 lib-device.sh 한 곳에만 둔다 (phone-cam 도 같은 것을 쓴다)
+. "$CB_DIR/lib-device.sh"
+
+DEV=$(resolve_device) || exit 1
+echo "▶ $DEV 에 연결 ($MODE)"
+
+# 오디오는 기본 ON — iPhone 미러링처럼 소리도 맥으로 오는 게 자연스럽다.
+# (Android 11+ 의 AudioPlaybackCapture 를 쓰므로 폰 스피커 대신 맥에서 난다)
+COMMON=(-s "$DEV" --window-title "Galaxy Z Fold 8" --stay-awake)
+case "$MODE" in
+  off)     OPTS=("${COMMON[@]}" --max-size 1600 --turn-screen-off) ;;
+  light)   OPTS=("${COMMON[@]}" --max-size 1024 --max-fps 30 --video-bit-rate 4M --no-audio) ;;  # 대역폭 절약
+  mute)    OPTS=("${COMMON[@]}" --max-size 1600 --max-fps 60 --no-audio) ;;                      # 소리는 폰에서
+  *)       OPTS=("${COMMON[@]}" --max-size 1600 --max-fps 60) ;;
+esac
+
+# 셸 세션과 분리 — 터미널이 닫혀도 창은 살아 있다
+nohup scrcpy "${OPTS[@]}" >/tmp/scrcpy.log 2>&1 &
+disown
+sleep 2
+if pgrep -x scrcpy >/dev/null; then
+  echo "✅ 창이 떴습니다 (로그: /tmp/scrcpy.log)"
+  echo "   ⌘B 뒤로 · ⌘H 홈 · ⌘S 최근 · ⌘O 화면끄기 · ⌘N 알림 · APK 드래그=설치"
+else
+  echo "❌ 실패 — /tmp/scrcpy.log 확인"; tail -5 /tmp/scrcpy.log
+fi

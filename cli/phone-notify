@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# phone-notify — 폰 알림을 맥으로 미러링하는 기능의 조작·필터.
+#
+#   phone-notify status          켜짐 여부 · 필터 상태
+#   phone-notify apps            어느 앱에서 얼마나 왔는지 (차단 목록 짤 근거)
+#   phone-notify deny  <패키지>   그 앱 알림을 막는다
+#   phone-notify allow <패키지>   다시 허용
+#   phone-notify off | on        전체 끄기/켜기
+#   phone-notify only            «허용한 앱만» 모드로 전환 (목록 초기화됨)
+#   phone-notify setup           폰에서 알림 접근 권한 화면 열기
+set -uo pipefail
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+die() { printf '%s\n' "$1" >&2; exit 1; }
+api() { curl -s -m 5 -H "X-ClipBridge-Token: $TOKEN" "$@"; }
+case "${1-status}" in setup|-h|--help) ;; *) cb_need mac token ;; esac
+
+case "${1-status}" in
+  status)
+    f=$(api "http://$MAC:8787/notify-filter") || die "clipd 에 못 닿는다"
+    python3 - "$f" <<'PY'
+import json, sys
+c = json.loads(sys.argv[1])["filter"]
+print("알림 미러링:", "켜짐" if c["enabled"] else "꺼짐")
+print("모드      :", "차단 목록" if c["mode"] == "deny" else "허용 목록만")
+print("목록      :", ", ".join(c["apps"]) or "(없음)")
+PY
+    ;;
+
+  apps)
+    s=$(api "http://$MAC:8787/notify-stats") || die "clipd 에 못 닿는다"
+    python3 - "$s" <<'PY'
+import json, sys
+st = json.loads(sys.argv[1])["stats"]
+if not st:
+    print("아직 받은 알림이 없다 — 폰에서 「알림 접근」을 허용했는지 확인 (phone-notify setup)")
+else:
+    rows = sorted(st.items(), key=lambda kv: -kv[1]["count"])
+    print(f'{"건수":>5} {"막힘":>5}  {"마지막":<12} 앱 / 패키지')
+    for pkg, e in rows:
+        print(f'{e["count"]:>5} {e["blocked"]:>5}  {e["last"]:<12} {e["app"]}  ({pkg})')
+PY
+    ;;
+
+  deny|allow)
+    [ $# -ge 2 ] || die "패키지명을 줄 것 — phone-notify $1 com.kakao.talk"
+    api -X POST "http://$MAC:8787/notify-filter" \
+      -d "{\"action\":\"$1\",\"pkg\":\"$2\"}" >/dev/null || die "clipd 에 못 닿는다"
+    echo "$1: $2"
+    ;;
+
+  on|off)
+    api -X POST "http://$MAC:8787/notify-filter" -d "{\"action\":\"$1\"}" >/dev/null \
+      || die "clipd 에 못 닿는다"
+    echo "알림 미러링 $([ "$1" = on ] && echo 켬 || echo 끔)"
+    ;;
+
+  only)
+    api -X POST "http://$MAC:8787/notify-filter" -d '{"action":"mode","mode":"allow"}' >/dev/null
+    echo "«허용한 앱만» 모드. 이제 phone-notify allow <패키지> 로 하나씩 열 것"
+    ;;
+
+  setup)
+    adb shell am start -a android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS >/dev/null 2>&1 \
+      && echo "폰에 설정 화면을 띄웠다 — 목록에서 「맥으로 알림 미러링」을 켤 것" \
+      || echo "adb 로 못 띄웠다 — 폰에서 ClipBridge 앱을 열고 「알림 접근 허용」 버튼을 누를 것"
+    ;;
+
+  *) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

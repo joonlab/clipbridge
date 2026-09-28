@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="shot" content="w=1600,h=1000,scale=2">
+<title>알림 미러와 문자</title>
+<link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
+<script src="https://mockup-kit.invalid/kit.js"></script>
+<style>
+  .layout { position: absolute; top: 30px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 44px; }
+  .mac-col { width: 760px; display: flex; flex-direction: column; gap: 16px; }
+  .banners { display: flex; flex-direction: column; gap: 10px; align-self: flex-end; width: 420px; }
+  .banners .mac-notification { width: 100%; }
+  .qs-top { padding: 6px 4px 2px; display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+<div class="canvas app-clipbridge">
+  <div class="mac-menubar">
+    <span class="app-name">Finder</span><span>파일</span><span>편집</span><span>보기</span>
+    <div class="extras">
+      <span class="extra"><i data-icon="wifi"></i></span>
+      <span class="extra"><i data-icon="battery"></i></span>
+      <span class="clock">9월 28일 (일) 오후 3:05</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="fold-cover" style="--zoom:.8">
+        <div class="screen">
+          <div class="status-bar" data-time="3:05"></div>
+          <div class="content">
+            <div class="qs-top"><span class="t-sheet">알림</span><span class="icon-btn"><i data-icon="settings"></i></span></div>
+            <div class="notif-stack">
+              <div class="notif">
+                <div class="notif-head"><span class="ico"><i data-icon="message"></i></span><span>메신저</span><span>· 지금</span></div>
+                <div class="notif-title">민지</div>
+                <div class="notif-body">내일 회의 10시 맞지?</div>
+              </div>
+              <div class="notif">
+                <div class="notif-head"><span class="ico"><i data-icon="download"></i></span><span>택배</span><span>· 2분 전</span></div>
+                <div class="notif-title">배송 출발</div>
+                <div class="notif-body">오늘 오후 도착 예정입니다</div>
+              </div>
+              <div class="notif">
+                <div class="notif-head"><span class="ico"><i data-icon="calendar"></i></span><span>캘린더</span><span>· 10분 전</span></div>
+                <div class="notif-title">운동 · 오후 7시</div>
+                <div class="notif-body">30분 뒤 시작</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-handle"></div>
+        </div>
+      </div>
+      <div class="device-label">폰 알림이 오면</div>
+    </div>
+
+    <div class="mac-col">
+      <div class="banners">
+        <div class="mac-notification">
+          <img data-app="clipbridge" alt="">
+          <div>
+            <div class="n-top"><span class="n-title">메신저</span><span class="n-time">지금</span></div>
+            <div class="n-body"><b>민지</b> · 내일 회의 10시 맞지?</div>
+          </div>
+        </div>
+        <div class="mac-notification">
+          <img data-app="clipbridge" alt="">
+          <div>
+            <div class="n-top"><span class="n-title">택배</span><span class="n-time">2분 전</span></div>
+            <div class="n-body"><b>배송 출발</b> · 오늘 오후 도착 예정입니다</div>
+          </div>
+        </div>
+      </div>
+      <div class="terminal">
+        <div class="terminal-bar"><span class="traffic"><i></i><i></i><i></i></span><span class="t-title">zsh</span></div>
+        <div class="terminal-body"><span class="t-prompt">❯</span> <span class="t-b">phone-notify apps</span>
+<span class="t-dim">   건수  막힘  마지막        앱 / 패키지</span>
+    128     0  09-28 15:05  메신저  <span class="t-dim">(com.example.messenger)</span>
+     41    41  09-28 14:58  날씨    <span class="t-dim">(com.example.weather)</span>
+      9     0  09-28 15:03  택배    <span class="t-dim">(com.example.parcel)</span>
+
+<span class="t-prompt">❯</span> <span class="t-b">phone-sms search 인증</span>
+ 09-28 14:12  ← 예시쇼핑          [예시쇼핑] 인증번호 [000000] 를 입력해 주세요
+ 09-27 09:40  ← 예시쇼핑          [예시쇼핑] 인증번호 [000000] 를 입력해 주세요
+
+(2통)
+<span class="t-prompt">❯</span> <span class="t-cursor"></span></div>
+      </div>
+      <div class="device-label">맥 알림센터와 터미널 · 로그에는 본문 대신 글자 수만 남깁니다</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

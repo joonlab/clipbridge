@@ -1,0 +1,7 @@
+local.properties
+clipbridge.properties
+.gradle/
+.kotlin/
+build/
+*.iml
+.idea/

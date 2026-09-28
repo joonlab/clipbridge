@@ -1,0 +1,52 @@
+#!/bin/bash
+# clipbridge-deploy — ClipBridge 앱을 빌드·설치하고 수신 서버까지 확인한다.
+#
+# 설치 직후 앱을 한 번 여는 이유: Android 12+ 는 백그라운드에서 포그라운드 서비스를
+# 시작하지 못하게 막는다. 폰이 Doze 중이면 MY_PACKAGE_REPLACED 로는 서버가 안 뜬다.
+set -euo pipefail
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+. "$CB_DIR/lib-device.sh"
+cb_need mac phone token
+# 빌드 스크립트(app/build.gradle.kts)가 환경변수로 맥 주소·토큰을 읽는다
+export CLIPBRIDGE_MAC_HOST CLIPBRIDGE_TOKEN
+# gradlew 는 org.gradle.java.home 을 읽기 전에 java 를 찾는다 → JDK 21 을 먼저 잡아 둔다
+if [ -z "${JAVA_HOME-}" ] && [ -d /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ]; then
+  export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+fi
+
+ROOT="$(dirname "$CB_DIR")/android"
+APK=$ROOT/app/build/outputs/apk/debug/app-debug.apk
+
+echo "▶ 빌드"
+"$ROOT/gradlew" -p "$ROOT" assembleDebug -q || { echo "❌ 빌드 실패"; exit 1; }
+
+DEV=$(resolve_device) || exit 1
+echo "▶ 설치 → $DEV"
+adb -s "$DEV" install -r "$APK" | tail -1
+
+echo "▶ 앱 열기 (수신 서버 기동)"
+adb -s "$DEV" shell am start -n kr.joonlab.clipbridge/.MainActivity >/dev/null 2>&1
+
+# 서버가 뜨는 데 3초를 넘기는 때가 있다(Doze 직후·첫 설치) → 3초 간격 최대 5회 확인.
+echo "▶ 확인"
+H=""
+for i in 1 2 3 4 5; do
+  sleep 3
+  H=$(curl -s -m 6 "http://$PHONE:8788/health" || true)
+  [ -n "$H" ] && break
+  echo "  … 아직 응답 없음 ($i/5)"
+done
+if [ -z "$H" ]; then
+  echo "❌ 수신 서버가 안 떴다 — 폰에서 ClipBridge 를 직접 열어 볼 것"
+  exit 1
+fi
+python3 - "$H" <<'PY'
+import json, sys
+h = json.loads(sys.argv[1])
+print(f"  ✅ {h['device']} · {h['bound']}")
+print(f"  링크 바로 열기 : {'✅' if h.get('canOpenDirectly') else '○ (알림 탭 경로로 동작)'}")
+print(f"  문자 발송      : {'✅' if h.get('canSendSms') else '○ (권한 없음)'}")
+PY
+adb -s "$DEV" shell settings get secure enabled_notification_listeners 2>/dev/null \
+  | grep -q clipbridge && echo "  알림 미러링    : ✅" || echo "  알림 미러링    : ○ (phone-notify setup)"

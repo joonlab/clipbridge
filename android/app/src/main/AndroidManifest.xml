@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 켜 두면 백그라운드에서도 링크를 바로 열 수 있다(BAL 제한 해제) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 맥이 시킨 문자를 폰이 대신 보낸다 (런타임 승인 필요) -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <!-- 읽기 전용 조회 (맥에서 문자 검색·확인) -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:label="ClipBridge"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="ClipBridge"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- 접고 펴도 액티비티를 다시 만들지 않는다 — 스크롤·펼친 섹션이 남고, 서버 시작·맥 확인이 매번 다시 돌지 않는다 -->
+            <meta-data android:name="android.supports_size_changes" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
+        <!-- 빠른 설정 패널 타일: 복사 → 스와이프 → 탭 2동작으로 맥에 보낸다 -->
+        <service
+            android:name=".ClipTileService"
+            android:exported="true"
+            android:label="맥으로 복사"
+            android:icon="@drawable/ic_stat_bridge"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- 화면이 없는 액티비티. 공유 시트에서 고르면 떴다가 바로 사라진다. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:label="맥으로 보내기"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- 사진·동영상·문서 등 모든 파일 (퀵쉐어가 맥을 지원하지 않아 이 경로가 필요하다) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+
+            <!-- 타일이 부르는 내부 액션 -->
+            <intent-filter>
+                <action android:name="kr.joonlab.clipbridge.SEND_CLIPBOARD" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- 텍스트 선택 시 뜨는 메뉴에도 등록 -->
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- 맥 → 폰 클립보드 주입. 쓰기는 포커스 제약을 안 받는다(2026-09-21 실측) -->
+        <receiver
+            android:name=".ClipReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="kr.joonlab.clipbridge.SET_CLIP" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 맥 → 폰 클립보드 수신 서버. adb 없이 상시 동작한다 -->
+        <service
+            android:name=".ClipServerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="tailnet 안의 내 맥에서 오는 클립보드를 받는 개인용 상시 수신 서버" />
+        </service>
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 폰 알림 → 맥. 설정에서 「알림 접근」을 직접 허용해야 동작한다 -->
+        <service
+            android:name=".NotifyMirror"
+            android:exported="true"
+            android:label="맥으로 알림 미러링"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

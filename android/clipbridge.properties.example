@@ -1,0 +1,10 @@
+# 폰 앱 빌드 설정 예시. 복사해서 쓴다:  cp clipbridge.properties.example clipbridge.properties
+# (clipbridge.properties 는 .gitignore 에 들어 있다 — 커밋하지 말 것)
+#
+# 이 파일 대신 환경변수 CLIPBRIDGE_MAC_HOST / CLIPBRIDGE_TOKEN 을 줘도 된다.
+# cli/clipbridge-deploy 는 ~/.config/clipbridge/clipbridge.env 를 읽어 환경변수로 넘긴다.
+
+# 맥의 Tailscale 주소(IP 또는 MagicDNS 이름)
+clipbridge.macHost=
+# 맥 clipd 와 같은 토큰 (CLIPBRIDGE_TOKEN)
+clipbridge.token=

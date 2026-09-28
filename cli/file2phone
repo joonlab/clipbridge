@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# file2phone — 맥의 파일을 폴드8 「다운로드」로 보낸다. (폰→맥의 반대 방향)
+#
+#   file2phone 자료.pdf                한 개
+#   file2phone *.jpg                   여러 개
+#   file2phone -                       표준입력을 파일로 (이름은 --name 으로)
+#
+# 폰에서는 MediaStore 에 들어가므로 「내 파일」·갤러리에서 바로 보이고,
+# 알림을 탭하면 곧바로 열린다. adb 는 쓰지 않는다.
+set -uo pipefail
+
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+NAME=""
+
+die() { printf '%s\n' "$1" >&2; exit 1; }
+
+while [ $# -gt 0 ] && [ "${1-}" = "--name" ]; do NAME="$2"; shift 2; done
+[ $# -ge 1 ] || die "보낼 파일을 지정할 것 — file2phone <파일…>"
+cb_need phone token
+
+curl -s -m 4 "http://$PHONE:8788/health" >/dev/null \
+  || die "폰에 못 닿는다 — 화면을 한 번 켜 보고 ClipBridge 수신 알림이 있는지 확인"
+
+send_one() {
+  local path="$1" name="$2" mime size
+  # 확장자 우선. `file` 은 컨테이너를 보므로 apk·docx·hwpx 를 전부 zip 이라 한다.
+  mime=$(python3 -c '
+import sys, mimetypes
+extra = {".apk": "application/vnd.android.package-archive",
+         ".hwp": "application/x-hwp", ".hwpx": "application/hwp+zip",
+         ".m4a": "audio/mp4", ".heic": "image/heic", ".webp": "image/webp"}
+import os
+ext = os.path.splitext(sys.argv[1])[1].lower()
+print(extra.get(ext) or mimetypes.guess_type(sys.argv[1])[0] or "application/octet-stream")
+' "$path")
+  size=$(stat -f%z "$path")
+  # 한글·공백이 들어간 이름을 헤더로 안전하게 넘긴다(폰은 URLDecoder 로 푼다)
+  local enc
+  enc=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]))' "$name")
+
+  printf '%s (%s, %sMB) … ' "$name" "$mime" "$(echo "scale=1; $size/1048576" | bc)"
+  local resp
+  resp=$(curl -s -m 600 -X POST "http://$PHONE:8788/file" \
+      -H "X-ClipBridge-Token: $TOKEN" \
+      -H "X-Filename: $enc" \
+      -H "X-Mime: $mime" \
+      -H "Content-Type: application/octet-stream" \
+      --data-binary "@$path")
+  case "$resp" in
+    *'"ok":true'*) echo "✅" ;;
+    *) echo "❌ $resp"; return 1 ;;
+  esac
+}
+
+fail=0
+for f in "$@"; do
+  if [ "$f" = "-" ]; then
+    tmp=$(mktemp); cat > "$tmp"
+    send_one "$tmp" "${NAME:-stdin.txt}" || fail=1
+    rm -f "$tmp"
+  else
+    [ -f "$f" ] || { echo "건너뜀 (파일 아님): $f" >&2; fail=1; continue; }
+    send_one "$f" "${NAME:-$(basename "$f")}" || fail=1
+  fi
+done
+exit $fail

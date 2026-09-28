@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# link2phone — 맥에서 보던 링크를 폰에서 연다.
+#
+#   link2phone https://…        그 URL 을
+#   link2phone                  클립보드에 있는 URL 을
+#
+# 「다른 앱 위에 표시」가 허용돼 있으면 폰에서 **바로 열린다**.
+# 아니면 고우선 알림으로 가고, 탭 한 번이면 열린다 (Android 의 BAL 제한 때문).
+set -uo pipefail
+
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+
+die() { printf '%s\n' "$1" >&2; exit 1; }
+
+url="${1-$(pbpaste)}"
+url=$(printf '%s' "$url" | tr -d '\n' | sed 's/^ *//; s/ *$//')
+[ -n "$url" ] || die "URL 이 없다 (인자로 주거나 복사해 둘 것)"
+cb_need phone token
+
+case "$url" in
+  http://*|https://*) ;;
+  *://*) ;;                       # 다른 스킴도 폰이 알아서 처리한다
+  *.*) url="https://$url" ;;      # example.com 처럼 준 경우
+  *) die "URL 로 안 보인다: $url" ;;
+esac
+
+resp=$(printf '%s' "$url" | curl -s -m 8 -X POST "http://$PHONE:8788/open" \
+  -H "X-ClipBridge-Token: $TOKEN" \
+  -H "Content-Type: text/plain; charset=utf-8" \
+  --data-binary @-) || die "폰에 못 닿는다 — 화면을 켜 보고 ClipBridge 수신 알림 확인"
+
+case "$resp" in
+  *'"opened":true'*)  echo "→ 폰에서 열었다: $url" ;;
+  *'"ok":true'*)      echo "→ 폰에 알림으로 보냈다 (탭하면 열림): $url"
+                      echo "   바로 열리게 하려면 ClipBridge 에서 「다른 앱 위에 표시」를 허용할 것" ;;
+  *) die "폰이 거부했다: $resp" ;;
+esac

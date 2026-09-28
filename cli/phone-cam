@@ -1,0 +1,242 @@
+#!/bin/bash
+# phone-cam — 폴드8 카메라를 맥으로 가져온다 (화면 미러링이 아니라 «카메라» 소스).
+#
+#   phone-cam            후면 메인 · 1080p (기본)
+#   phone-cam front      전면(커버 화면 쪽)
+#   phone-cam inner      전면(펼쳤을 때 안쪽)
+#   phone-cam wide       후면 광각 (0.6배)
+#   phone-cam 4k         후면 메인 최대 해상도
+#   phone-cam mic        후면 메인 + 폰 마이크 소리까지
+#   phone-cam list       카메라 목록
+#   phone-cam stop       카메라 창만 종료 (폰 카메라 해방 · OBS 가상카메라는 계속 켜짐)
+#   phone-cam off        전부 종료 (카메라 창 + OBS 가상 카메라)
+#   phone-cam status     지금 뭐가 켜져 있는지
+#   phone-cam vcam       카메라 창 + OBS 가상 카메라까지 한 번에 (Zoom·Meet 용)
+#   phone-cam obs        OBS 설정법 (최초 1회)
+#
+# 맥에 «가상 카메라» 개념이 없어서 Zoom·Meet 에 바로 꽂히지는 않는다.
+# OBS 의 가상 카메라를 한 번 설정해 두면 그 다음부터는 앱 목록에 뜬다 (phone-cam obs).
+set -uo pipefail
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # PATH(adb·scrcpy) · CLIPBRIDGE_PHONE_HOST
+
+# ⚠️ BSD pgrep/pkill 은 대상 명령줄에 한글이 섞이면 "illegal byte sequence" 로 실패한다
+#    (창 제목이 「폴드8 카메라」다) → 이 파일의 pgrep/pkill 은 전부 LC_ALL=C 로 부른다.
+STOPFILE=/tmp/phone-cam.stop
+LOG=/tmp/phone-cam.log
+WATCH_TAG=__watch          # 감시 프로세스를 찾는 이름표
+
+alive()     { LC_ALL=C pgrep -f "video-source=camera" >/dev/null; }
+kill_cam()  { LC_ALL=C pkill -f "video-source=camera" 2>/dev/null; }
+# ⚠️ 감시자를 «scrcpy 패턴»으로 죽이면 안 된다 — 예전 구현은 함수 본문을 명령줄에 박는 바람에
+#    감시자 명령줄에도 "video-source=camera" 가 들어가, 한 번의 pkill 로 둘 다 죽었다.
+#    그래서 감시자는 자기 이름표(__watch)로만 죽인다.
+kill_watch(){ LC_ALL=C pkill -f "phone-cam $WATCH_TAG" 2>/dev/null; }
+obs_running(){ pgrep -x OBS >/dev/null 2>&1 || \
+               LC_ALL=C pgrep -f "/Applications/OBS.app/Contents/MacOS/OBS" >/dev/null 2>&1; }
+
+opts_for() {   # $1=DEV  $2=MODE  → OPTS 배열을 채운다
+  local dev="$1" mode="$2"
+  local base=(-s "$dev" --video-source=camera --window-title "폴드8 카메라" --no-audio)
+  case "$mode" in
+    front) OPTS=("${base[@]}" --camera-id=1 --camera-ar=16:9 --max-size=1920 --camera-fps=30) ;;
+    inner) OPTS=("${base[@]}" --camera-id=3 --camera-ar=16:9 --max-size=1920 --camera-fps=30) ;;
+    wide)  OPTS=("${base[@]}" --camera-id=0 --camera-ar=16:9 --max-size=1920 --camera-fps=30) ;;
+    4k)    OPTS=("${base[@]}" --camera-id=0 --camera-ar=16:9 --max-size=3840 --camera-fps=30) ;;
+    mic)   OPTS=(-s "$dev" --video-source=camera --window-title "폴드8 카메라"
+                 --camera-id=0 --camera-ar=16:9 --max-size=1920 --camera-fps=30 --audio-source=mic) ;;
+    *)     OPTS=("${base[@]}" --camera-id=0 --camera-ar=16:9 --max-size=1920 --camera-fps=30) ;;
+  esac
+}
+
+# ── 감시 모드 (자기 자신을 다시 부른 것) ──────────────────────────────────────
+# 폰 쪽 카메라 캡처는 끊긴다 — 실측: 13분쯤 돌다가
+#   [server] WARN: Camera capture failed / WARN: Device disconnected
+# 로 죽었다(폰은 깨어 있었다). 통화 중 조용히 사라지면 곤란하므로 스스로 다시 붙는다.
+# ⚠️ 무한 루프 금지 — 횟수 상한(10회) + 즉사 3연속이면 포기.
+if [ "${1-}" = "$WATCH_TAG" ]; then
+  opts_for "$2" "$3"
+  # 재시도 정책이 두 갈래인 이유:
+  #  · 잘 돌다가 끊긴 것(dt>=5) = 폰 쪽 캡처 실패 → 바로 다시 붙으면 된다
+  #  · 즉사(dt<5) = 대개 **폰 카메라 앱이 켜져 있다**
+  #      CameraAccessException: The system-wide limit for number of open cameras has been reached
+  #      카메라 ID 를 바꿔도 소용없다(개수 한도라서). 닫힐 때까지 기다리는 수밖에 없다.
+  #      → 포기하지 말고 간격을 늘려가며 기다린다. 닫으면 저절로 돌아온다.
+  n=0; waits=0; warned=0
+  while [ "$n" -lt 40 ]; do
+    t0=$(date +%s)
+    scrcpy "${OPTS[@]}" >>"$LOG" 2>&1
+    [ -f "$STOPFILE" ] && break                     # 사용자가 stop 한 것이면 끝
+    dt=$(( $(date +%s) - t0 ))
+    n=$((n + 1))
+
+    if [ "$dt" -ge 5 ]; then
+      waits=0
+      echo "[$(date +%H:%M:%S)] 카메라 끊김(${dt}초 만에) — 재시작 $n" >> "$LOG"
+      sleep 2
+      continue
+    fi
+
+    # 즉사 — 카메라를 누가 쥐고 있다
+    waits=$((waits + 1))
+    case "$waits" in
+      1) gap=5 ;; 2) gap=10 ;; 3) gap=20 ;; *) gap=30 ;;
+    esac
+    if [ "$warned" -eq 0 ] && LC_ALL=C grep -q "system-wide limit" "$LOG"; then
+      warned=1
+      osascript -e 'display notification "폰 카메라 앱을 닫으면 자동으로 다시 붙습니다" with title "phone-cam" subtitle "카메라를 다른 앱이 쓰는 중"' 2>/dev/null
+    fi
+    echo "[$(date +%H:%M:%S)] 카메라를 다른 앱이 쓰는 중 — ${gap}초 후 재시도 ($n/40)" >> "$LOG"
+    sleep "$gap"
+  done
+  [ -f "$STOPFILE" ] || {
+    echo "[$(date +%H:%M:%S)] 40회 시도 후 중단" >> "$LOG"
+    osascript -e 'display notification "재시도를 중단했습니다 — phone-cam 으로 다시 띄우세요" with title "phone-cam"' 2>/dev/null
+  }
+  exit 0
+fi
+
+# ── 일반 모드 ────────────────────────────────────────────────────────────────
+MODE="${1:-default}"
+
+case "$MODE" in
+  stop|off)
+    touch "$STOPFILE"          # 감시 루프에게 «의도된 종료»임을 알린다
+    kill_watch
+    kill_cam && echo "✅ 카메라 창 종료 (폰 카메라 해방)" || echo "카메라 창은 실행 중이 아님"
+
+    if [ "$MODE" = "off" ]; then
+      # 가상 카메라는 OBS 안에서만 꺼진다 — 실행 중인 OBS 를 명령줄로 조작할 길이 없으므로
+      # (WebSocket 을 켜지 않는 한) OBS 자체를 정상 종료시킨다. quit 이면 설정은 저장된다.
+      if obs_running; then
+        osascript -e 'tell application "OBS" to quit' >/dev/null 2>&1
+        sleep 3
+        if obs_running; then
+          echo "⚠️  OBS 가 안 닫혔습니다 — 확인 창이 떠 있는지 보세요"
+        else
+          echo "✅ OBS 종료 (가상 카메라도 같이 꺼집니다)"
+        fi
+      else
+        echo "OBS 는 실행 중이 아님"
+      fi
+    else
+      obs_running && \
+        echo "   ⚠️ OBS 가상 카메라는 **계속 켜져 있습니다** — 화면만 까맣게 나갑니다" && \
+        echo "      끄려면: OBS 의 「Stop Virtual Camera」  또는  phone-cam off"
+    fi
+    exit 0 ;;
+
+  status)
+    LC_ALL=C pgrep -f "video-source=camera" >/dev/null \
+      && echo "카메라 창    : ✅ 동작 중 (폰 카메라 점유 중 — 폰 카메라 앱은 못 씁니다)" \
+      || echo "카메라 창    : ○ 꺼짐"
+    LC_ALL=C pgrep -f "phone-cam $WATCH_TAG" >/dev/null \
+      && echo "자동 복구    : ✅ 감시 중" || echo "자동 복구    : ○ 없음"
+    if obs_running; then
+      L=$(ls -t "$HOME/Library/Application Support/obs-studio/logs/"*.txt 2>/dev/null | head -1)
+      last=$(grep -E "Virtual Camera (Start|Stop)" "$L" 2>/dev/null | tail -1)
+      case "$last" in
+        *Start*) echo "가상 카메라  : ✅ 켜짐 (Zoom·Meet 에서 OBS Virtual Camera 선택 가능)" ;;
+        *Stop*)  echo "가상 카메라  : ○ OBS 는 켜져 있으나 가상 카메라는 꺼짐" ;;
+        *)       echo "가상 카메라  : ? OBS 실행 중 (로그에 기록 없음)" ;;
+      esac
+    else
+      echo "가상 카메라  : ○ OBS 꺼짐"
+    fi
+    exit 0 ;;
+  vcam|zoom)
+    # 재부팅하면 scrcpy 도 OBS 도 안 떠 있다. 순서가 중요하다 —
+    # **창을 먼저** 띄워야 OBS 가 소스를 되찾는다(속성 목록은 열릴 때 만들어진다).
+    "$0" default || exit 1
+    if obs_running; then
+      echo "ℹ️  OBS 가 이미 실행 중입니다 — 우하단 「가상 카메라 시작」을 눌러 주세요."
+      echo "   (실행 중인 OBS 의 가상 카메라는 명령줄로 켤 수 없습니다)"
+    else
+      echo "▶ OBS 실행 + 가상 카메라 시작"
+      open -a OBS --args --startvirtualcam --disable-shutdown-check
+      sleep 8
+    fi
+    # ⚠️ macOS 13+ 의 OBS 가상 카메라는 DAL 플러그인이 아니라 **시스템 확장**이다.
+    #    최초 1회 사용자 승인을 안 하면 `activated waiting for user` 로 멈춰 있고,
+    #    Zoom·Meet 목록에 아예 안 뜬다. system_profiler 로는 이 상태가 안 보인다.
+    ext=$(systemextensionsctl list 2>/dev/null | grep -i "obs.*camera" | head -1)
+    case "$ext" in
+      *"activated enabled"*)
+        echo "✅ OBS Virtual Camera 준비됨 — Zoom·Meet 카메라 목록에서 고르면 됩니다" ;;
+      *"waiting for user"*)
+        echo "⛔ OBS 가상 카메라가 **승인 대기** 상태입니다 (최초 1회만 필요)"
+        echo "   1) OBS 우하단 「가상 카메라 시작」 클릭 → 승인 팝업"
+        echo "   2) 시스템 설정 → 일반 → 로그인 항목 및 확장 프로그램 → 카메라 확장 → OBS 허용"
+        echo "   3) OBS 에서 다시 「가상 카메라 시작」"
+        echo "   승인은 한 번이면 끝이고 재부팅해도 유지됩니다." ;;
+      "")
+        echo "⚠️  OBS 카메라 확장을 못 찾았습니다 — OBS 를 한 번 실행해 설치되게 하세요" ;;
+      *)
+        echo "⚠️  가상 카메라 상태: $ext" ;;
+    esac
+    exit 0 ;;
+
+  obs)
+    cat <<'TXT'
+OBS 로 Zoom·Meet 에 꽂는 법 (최초 1회만)
+
+  1. phone-cam                  ← ★ 카메라 창을 «먼저» 띄운다
+  2. OBS 실행 — ★ 카메라 창과 **같은 데스크톱(Space)** 에 두어야 한다
+  3. 소스 + → 「윈도우 캡처」 → OK
+  4. 드롭다운에서  [scrcpy] 폴드8 카메라  선택 → OK
+  5. 우하단 「가상 카메라 시작」
+  6. Zoom·Meet 의 카메라 목록에서 「OBS Virtual Camera」 선택
+
+  ⚠️ 목록에 [scrcpy] 가 없다면 십중팔구 둘 중 하나다:
+     ① 카메라 창과 OBS 가 **서로 다른 데스크톱(Space)** 에 있다 ← 가장 흔하다
+        macOS 는 다른 Space 의 창을 목록에서 빼거나 검게 잡는다. 같은 Space 로 모을 것.
+     ② 창이 아직 안 떴다. OBS 속성 창은 **열리는 시점의 목록**을 쓰므로,
+        창을 띄운 뒤 속성을 Cancel 하고 소스를 더블클릭해 다시 열어야 한다.
+
+  이후로는 phone-cam 만 띄우면 OBS 가 같은 창을 계속 잡는다.
+
+⚠️ 폰 카메라 앱과는 «동시에» 못 쓴다
+   Android 는 시스템 전체로 동시에 열 수 있는 카메라 개수를 제한한다
+   (CameraAccessException: system-wide limit …). 카메라 ID 를 바꿔도 소용없다.
+   · 폰 카메라 앱을 닫으면 → phone-cam 이 **스스로 다시 붙는다**(최대 40회, 최대 30초 간격)
+   · 카메라 앱의 줌·야간모드·필터를 쓰면서 맥에 보내고 싶다면
+     → `phone` (화면 미러링)으로 전환하고 카메라 앱을 전체화면으로 둘 것.
+       뷰파인더가 그대로 넘어온다. 셔터 UI 는 OBS 크롭으로 잘라내면 된다.
+TXT
+    exit 0 ;;
+  -h|--help|help)
+    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0 ;;
+  default|front|inner|wide|4k|mic|list) ;;        # 아래로 진행
+  *)
+    echo "모르는 인자: $MODE" >&2
+    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' >&2
+    exit 1 ;;
+esac
+
+. "$CB_DIR/lib-device.sh"
+DEV=$(resolve_device) || exit 1
+
+[ "$MODE" = "list" ] && { scrcpy -s "$DEV" --list-cameras; exit 0; }
+
+echo "▶ $DEV · $MODE"
+rm -f "$STOPFILE"
+kill_watch; kill_cam; sleep 1
+
+# ⚠️ GUI 앱을 셸 세션에 매달면 터미널을 닫을 때 같이 죽는다 → 분리해 띄운다
+nohup "$0" "$WATCH_TAG" "$DEV" "$MODE" >/dev/null 2>&1 &
+disown
+sleep 4
+
+if alive; then
+  echo "✅ 카메라 창이 떴습니다 (Zoom·Meet 에 꽂으려면: phone-cam obs)"
+  echo "   끊기면 스스로 다시 붙습니다 (로그 $LOG)"
+elif LC_ALL=C grep -q "system-wide limit" "$LOG" 2>/dev/null; then
+  # 실패가 아니라 «대기»다 — 감시자가 계속 문을 두드리고 있다
+  echo "⏳ 폰 카메라 앱이 카메라를 쥐고 있습니다."
+  echo "   앱을 닫으면 자동으로 붙습니다 (최대 30초 간격으로 재시도 중)"
+  echo "   지금 바로 쓰려면: phone  ← 화면 미러링으로 카메라 앱 뷰파인더를 그대로 본다"
+else
+  echo "❌ 실패 — 로그:"; tail -12 "$LOG"
+  exit 1
+fi

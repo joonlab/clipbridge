@@ -1,0 +1,31 @@
+# 빌드 산출물
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+.idea/
+*.iml
+local.properties
+__pycache__/
+*.pyc
+.DS_Store
+
+# 개인 설정 — 예시(.example)만 커밋한다
+.env
+*.env
+!config.example.env
+android/clipbridge.properties
+
+# 실행 기록·상태 — 사적인 내용(알림·클립보드 흔적)이 남는다
+*.log
+server/clipwatch
+server/*.state
+server/notify-stats.json
+server/notify-filter.json
+server/stt-queue.json
+runs/
+_data/
+
+# 정리용
+_trash/

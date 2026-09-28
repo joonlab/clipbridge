@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# clip2phone — 맥 클립보드를 폴드8로 보낸다 / 자동 동기화를 켜고 끈다.
+#
+# 자동 동기화가 기본으로 켜져 있으므로 평소에는 이 명령이 필요 없다.
+# 필요한 경우: 자동을 꺼 둔 채 한 번만 보내고 싶을 때, 상태를 보고 싶을 때,
+# 임의 텍스트(클립보드가 아닌 것)를 폰에 넣고 싶을 때.
+#
+#   clip2phone                지금 맥 클립보드를 폰으로 (자동 꺼져 있어도 보낸다)
+#   clip2phone "아무 텍스트"    그 텍스트를 폰 클립보드에
+#   echo x | clip2phone -      표준입력을 폰 클립보드에
+#   clip2phone on|off          자동 동기화 켜기/끄기
+#   clip2phone status          상태 (자동 여부 · 폰 도달 여부)
+set -uo pipefail
+
+CB_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+. "$CB_DIR/clipbridge-env.sh"      # MAC · PHONE · TOKEN (~/.config/clipbridge/clipbridge.env)
+
+die() { printf '%s\n' "$1" >&2; exit 1; }
+
+case "${1-}" in
+  on|off)
+    cb_need mac token
+    out=$(curl -s -m 5 -X POST -H "X-ClipBridge-Token: $TOKEN" "http://$MAC:8787/watch" --data-binary "$1") \
+      || die "clipd 에 못 닿는다 — launchctl list | grep clipd"
+    if [ "$1" = on ]; then echo "자동 동기화 켬 — 맥에서 복사하면 폰에 들어간다"
+    else echo "자동 동기화 끔 — clip2phone 으로만 보낸다"; fi
+    exit 0 ;;
+
+  status)
+    cb_need mac phone token
+    w=$(curl -s -m 5 -H "X-ClipBridge-Token: $TOKEN" "http://$MAC:8787/watch") || die "clipd 에 못 닿는다"
+    h=$(curl -s -m 4 "http://$PHONE:8788/health" 2>/dev/null)
+    echo "clipd  : $w"
+    echo "폰     : ${h:-❌ 안 닿음 (폰 절전·Tailscale·ClipBridge 수신 서버 확인)}"
+    exit 0 ;;
+
+  -h|--help)
+    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+# 보낼 내용 정하기
+if [ $# -ge 1 ] && [ "$1" = "-" ]; then
+  text=$(cat)
+elif [ $# -ge 1 ]; then
+  text="$*"
+else
+  text=$(pbpaste)
+fi
+
+[ -n "$text" ] || die "보낼 내용이 없다"
+cb_need phone token
+
+# 폰에 바로 쏜다. clipd 를 거치지 않으므로 clipd 가 죽어 있어도 동작한다.
+resp=$(printf '%s' "$text" | curl -s -m 6 -X POST "http://$PHONE:8788/clip" \
+  -H "X-ClipBridge-Token: $TOKEN" \
+  -H "Content-Type: text/plain; charset=utf-8" \
+  --data-binary @-) || die "폰에 못 닿는다 — 화면을 한 번 켜 보고, ClipBridge 알림이 있는지 확인"
+
+case "$resp" in
+  *'"ok":true'*) printf '→ 폴드8 클립보드 (%s자)\n' "$(printf '%s' "$text" | wc -m | tr -d ' ')" ;;
+  *) die "폰이 거부했다: $resp" ;;
+esac
