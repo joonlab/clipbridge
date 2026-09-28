@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="shot" content="w=1800,h=1103,scale=1">
+<title>장면 3 · 맥 화면 — 폰 화면은 끄고 미러링 창으로 조작</title>
+<link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
+<script src="https://mockup-kit.invalid/kit.js"></script>
+<style>
+  .desk { zoom: 2.25; width: 800px; height: 490px; position: relative; overflow: hidden;
+    background: radial-gradient(120% 90% at 20% 10%, #CFE7E2 0%, #9FC7C0 45%, #6E9E97 100%); }
+  .mac-menubar { font-size: 14px; }
+  .term { position: absolute; left: 22px; top: 170px; width: 340px; height: 180px; }
+  .term .terminal-body { font-size: 15px; line-height: 24px; }
+  /* scrcpy 창: 제목 막대 + 폰 펼침 화면 (832x940 비율) */
+  .mirror { position: absolute; right: 26px; top: 38px; width: 392px; height: 446px; }
+  .mirror .mac-titlebar { height: 32px; }
+  .mirror .mac-title { font-size: 13.5px; left: 60px; right: 20px; }
+  .ph { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-size: 17px; line-height: 25px; }
+  .ph .status-bar { height: 26px; font-size: 12px; padding: 0 14px; }
+  .ph .app-bar { height: 50px; }
+  .ph .app-bar .title { font-size: 19px; }
+  .ph .content { flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .ph .msg { font-size: 17px; line-height: 24px; padding: 9px 13px; }
+  .ph .input-bar { padding: 8px 10px; }
+  .ph .input { font-size: 17px; line-height: 23px; padding: 10px 14px; min-height: 0; }
+  .ph .send-btn { width: 42px; height: 42px; }
+  .caret { display: inline-block; width: 2px; height: 20px; background: var(--accent); vertical-align: -3px; margin-left: 1px; }
+</style></head><body>
+<div class="desk">
+  <div class="mac-menubar">
+    <span class="app-name">scrcpy</span><span>윈도우</span>
+    <div class="extras"><span class="extra"><i data-icon="wifi"></i></span><span class="extra"><i data-icon="battery"></i></span><span class="clock">9월 28일 (일) 오후 4:12</span></div>
+  </div>
+  <div class="terminal term">
+    <div class="terminal-bar"><span class="traffic"><i></i><i></i><i></i></span><span class="t-title">zsh</span></div>
+    <div class="terminal-body"><span class="t-prompt">❯</span> <span class="t-b">phone off</span>
+<span class="t-ok">✅ 창이 떴습니다</span>
+<span class="t-dim">⌘B 뒤로 · ⌘H 홈 · ⌘S 최근</span>
+<span class="t-prompt">❯</span> </div>
+  </div>
+  <div class="mac-window mirror app-clipbridge">
+    <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">Galaxy Z Fold 8</span></div>
+    <div class="ph">
+      <div class="status-bar" data-time="4:12"></div>
+      <div class="app-bar"><span class="avatar accent">민</span><span class="title">민지</span></div>
+      <div class="content">
+        <div class="msg">내일 회의 10시 맞지?</div>
+        <div class="msg">자료는 내가 출력해 갈게</div>
+      </div>
+      <div class="input-bar">
+        <div class="input">응 10시 맞아, 고마워!<span class="caret"></span></div>
+        <span class="send-btn"><i data-icon="send"></i></span>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

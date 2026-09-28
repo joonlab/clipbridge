@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="shot" content="w=1800,h=1105,scale=1">
+<title>장면 1 · 맥 화면 — 메모에서 복사</title>
+<link rel="stylesheet" href="https://mockup-kit.invalid/kit.css">
+<script src="https://mockup-kit.invalid/kit.js"></script>
+<style>
+  body { background: #000; }
+  .desk { zoom: 2.25; width: 800px; height: 491px; position: relative; overflow: hidden;
+    background: radial-gradient(120% 90% at 20% 10%, #CFE7E2 0%, #9FC7C0 45%, #6E9E97 100%); }
+  .mac-menubar { font-size: 14px; }
+  .mac-menubar .on { background: rgba(0,0,0,.12); border-radius: 5px; padding: 1px 7px; margin: 0 -7px; }
+  .notes { position: absolute; left: 238px; top: 64px; width: 540px; height: 400px; }
+  .notes .mac-split { grid-template-columns: 150px 1fr; }
+  .note-item { padding: 8px 10px; border-radius: 8px; font-size: 13.5px; line-height: 19px; }
+  .note-item.on { background: #F4D26B; }
+  .note-item .dim { font-size: 12px; }
+  .note { padding: 26px 24px; font-size: 22px; line-height: 34px; }
+  .note h1 { font-size: 27px; line-height: 38px; margin: 0 0 6px; font-weight: 700; }
+  .sel { background: #B3D4FF; border-radius: 2px; }
+  .note .rest { color: var(--mac-dim); font-size: 17px; line-height: 28px; margin-top: 14px; }
+  .menu { position: absolute; left: 118px; top: 30px; width: 250px; z-index: 30; font-size: 15px; }
+  .menu .m-item { height: 32px; }
+  .menu .m-item .kbd { font-size: 14px; }
+</style></head><body>
+<div class="desk">
+  <div class="mac-menubar">
+    <span class="app-name">메모</span><span>파일</span><span class="on">편집</span><span>형식</span><span>보기</span><span>윈도우</span>
+    <div class="extras"><span class="extra"><i data-icon="wifi"></i></span><span class="extra"><i data-icon="battery"></i></span><span class="clock">9월 28일 (일) 오후 2:31</span></div>
+  </div>
+  <div class="mac-window notes">
+    <div class="mac-titlebar"><span class="traffic"><i></i><i></i><i></i></span><span class="mac-title">메모</span></div>
+    <div class="mac-split">
+      <div class="mac-sidebar">
+        <div class="note-item on"><b>장보기 목록</b><div class="dim">오후 2:30</div></div>
+        <div class="note-item"><b>주말 계획</b><div class="dim">어제</div></div>
+        <div class="note-item"><b>읽을 책</b><div class="dim">9월 25일</div></div>
+      </div>
+      <div class="note">
+        <h1><span class="sel">장보기 목록</span></h1>
+        <div><span class="sel">우유 2개, 달걀 한 판, 두부, 대파</span></div>
+        <div class="rest">저녁은 서준이랑 같이 — 6시 반</div>
+      </div>
+    </div>
+  </div>
+  <div class="mac-menu menu">
+    <div class="m-item">실행 취소<span class="kbd">⌘Z</span></div>
+    <div class="m-sep"></div>
+    <div class="m-item">오려두기<span class="kbd">⌘X</span></div>
+    <div class="m-item hl">복사하기<span class="kbd">⌘C</span></div>
+    <div class="m-item">붙여넣기<span class="kbd">⌘V</span></div>
+    <div class="m-sep"></div>
+    <div class="m-item">모두 선택<span class="kbd">⌘A</span></div>
+  </div>
+</div>
+</body></html>
